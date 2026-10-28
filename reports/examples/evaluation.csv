@@ -1,0 +1,4 @@
+detector,precision,recall,f1_score,confusion_matrix,confusion_matrix_layout,total_transactions,total_actual_anomalies,total_predicted_anomalies,true_negatives,false_positives,false_negatives,true_positives
+rule_based,0.9090909091,1.0000000000,0.9523809524,"[[945, 5], [0, 50]]","rows=actual [0,1], columns=predicted [0,1]",1000,50,55,945,5,0,50
+isolation_forest,0.3181818182,0.1400000000,0.1944444444,"[[935, 15], [43, 7]]","rows=actual [0,1], columns=predicted [0,1]",1000,50,22,935,15,43,7
+combined_or,0.7142857143,1.0000000000,0.8333333333,"[[930, 20], [0, 50]]","rows=actual [0,1], columns=predicted [0,1]",1000,50,70,930,20,0,50

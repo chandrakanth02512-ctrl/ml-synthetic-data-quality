@@ -1,0 +1,63 @@
+{
+  "config": {
+    "anomaly_fraction": 0.05,
+    "baseline_quantile": 0.995,
+    "evaluation_rows": 1000,
+    "evaluation_seed": 123,
+    "model": {
+      "contamination": 0.02,
+      "max_samples": 256,
+      "n_estimators": 200,
+      "random_state": 42
+    },
+    "training_rows": 5000,
+    "training_seed": 42
+  },
+  "dataset_sha256": {
+    "evaluation.csv": "00d0db5f427dd76bdb97a659b960df9ed3f6cb920bb1fca8927c3424ce654ce7",
+    "evaluation_truth.csv": "c1bdd8b382dc3b08061c15c79c9bd0b57fa4e9d08f6c573f7ad119ee904df76c",
+    "training.csv": "996d1acb0e82c13977e48fc78dca4b699023bb5e78dabdcc53cea2d46092edc0"
+  },
+  "evaluation_period": "2025-02-01 through 2025-02-28 UTC",
+  "feature_names": [
+    "numeric__log_amount_usd",
+    "numeric__hour_sin",
+    "numeric__hour_cos",
+    "categorical__merchant_category_dining",
+    "categorical__merchant_category_entertainment",
+    "categorical__merchant_category_groceries",
+    "categorical__merchant_category_retail",
+    "categorical__merchant_category_transport",
+    "categorical__merchant_category_utilities",
+    "categorical__currency_EUR",
+    "categorical__currency_GBP",
+    "categorical__currency_INR",
+    "categorical__currency_USD",
+    "categorical__country_DE",
+    "categorical__country_GB",
+    "categorical__country_IN",
+    "categorical__country_US"
+  ],
+  "model_reload_verified": true,
+  "package_versions": {
+    "joblib": "1.6.0",
+    "ml-synthetic-data-quality": "0.1.0",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scikit-learn": "1.9.1"
+  },
+  "python_version": "3.13.0",
+  "rule_baseline": {
+    "amount_quantile": 0.995,
+    "amount_threshold_usd": 316.5725256250001,
+    "early_hour_cutoff": 6
+  },
+  "score_definition": "negative decision_function; larger is more anomalous; anomaly if > 0",
+  "synthetic_units_per_usd": {
+    "EUR": 0.9,
+    "GBP": 0.8,
+    "INR": 80.0,
+    "USD": 1.0
+  },
+  "training_period": "2025-01-01 through 2025-01-28 UTC"
+}

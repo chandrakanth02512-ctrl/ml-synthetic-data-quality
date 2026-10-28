@@ -1,0 +1,35 @@
+{
+  "coverage": {
+    "covered_branches": 69,
+    "covered_lines": 343,
+    "num_branches": 76,
+    "num_statements": 360,
+    "percent_covered": 94.4954128440367
+  },
+  "coverage_note": "Includes branch measurement. CLI subprocess is executed but not included in parent-process coverage.",
+  "dataset_hashes_verified": true,
+  "examples_match_final_run": true,
+  "full_pipeline": "passed",
+  "git": "Initialized locally on main; no commit, remote, or push.",
+  "limitations": [
+    "Other Python and package combinations are unverified.",
+    "Isolation Forest recall is 0.14 on this synthetic evaluation split."
+  ],
+  "pip_check": "passed",
+  "platform": "Windows x64",
+  "python_version": "3.13.0",
+  "reproducibility": "Two full default runs produce identical data and report bytes in test_full_runs_reproduce_data_predictions_reports_and_hashes.",
+  "ruff_check": "passed",
+  "ruff_format_check": "passed",
+  "saved_model_reload": "exact labels and scores verified",
+  "test_command": "python -m pytest -q --basetemp .tmp/pytest --cov=synthetic_quality --cov-report=term-missing --cov-report=json:reports/coverage.json --junitxml=reports/pytest.xml",
+  "tests": {
+    "errors": 0,
+    "failures": 0,
+    "passed": 82,
+    "skipped": 0,
+    "tests": 82
+  },
+  "unresolved_execution_failures": [],
+  "verified_date": "2026-10-28"
+}

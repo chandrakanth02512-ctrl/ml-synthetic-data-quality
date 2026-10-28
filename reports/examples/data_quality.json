@@ -1,0 +1,204 @@
+{
+  "evaluation": {
+    "checks": [
+      {
+        "check_name": "schema_mismatch",
+        "details": {
+          "missing": [],
+          "repeated_columns": 0,
+          "unexpected": []
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "missing_required_columns",
+        "details": {
+          "columns": []
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "empty_dataset",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "null_values",
+        "details": {
+          "country": 0,
+          "currency": 0,
+          "customer_id": 0,
+          "merchant_category": 0,
+          "timestamp": 0,
+          "transaction_amount": 0,
+          "transaction_id": 0
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "duplicate_transaction_ids",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "invalid_transaction_amounts",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "invalid_data_types",
+        "details": {
+          "country": 0,
+          "currency": 0,
+          "customer_id": 0,
+          "merchant_category": 0,
+          "timestamp": 0,
+          "transaction_amount": 0,
+          "transaction_id": 0
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "unsupported_currencies",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "business_rule_violations",
+        "details": {
+          "blank_country": 0,
+          "blank_currency": 0,
+          "blank_customer_id": 0,
+          "blank_merchant_category": 0,
+          "blank_transaction_id": 0,
+          "country_currency_mismatch": 0,
+          "timestamp_not_utc": 0,
+          "unsupported_country": 0,
+          "unsupported_merchant_category": 0
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      }
+    ],
+    "passed": true,
+    "row_count": 1000
+  },
+  "training": {
+    "checks": [
+      {
+        "check_name": "schema_mismatch",
+        "details": {
+          "missing": [],
+          "repeated_columns": 0,
+          "unexpected": []
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "missing_required_columns",
+        "details": {
+          "columns": []
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "empty_dataset",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "null_values",
+        "details": {
+          "country": 0,
+          "currency": 0,
+          "customer_id": 0,
+          "merchant_category": 0,
+          "timestamp": 0,
+          "transaction_amount": 0,
+          "transaction_id": 0
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "duplicate_transaction_ids",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "invalid_transaction_amounts",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "invalid_data_types",
+        "details": {
+          "country": 0,
+          "currency": 0,
+          "customer_id": 0,
+          "merchant_category": 0,
+          "timestamp": 0,
+          "transaction_amount": 0,
+          "transaction_id": 0
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "unsupported_currencies",
+        "details": {},
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      },
+      {
+        "check_name": "business_rule_violations",
+        "details": {
+          "blank_country": 0,
+          "blank_currency": 0,
+          "blank_customer_id": 0,
+          "blank_merchant_category": 0,
+          "blank_transaction_id": 0,
+          "country_currency_mismatch": 0,
+          "timestamp_not_utc": 0,
+          "unsupported_country": 0,
+          "unsupported_merchant_category": 0
+        },
+        "failure_count": 0,
+        "passed": true,
+        "skipped_columns": []
+      }
+    ],
+    "passed": true,
+    "row_count": 5000
+  }
+}
