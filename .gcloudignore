@@ -1,0 +1,12 @@
+# Cloud Build uploads only this source allowlist (independent of .dockerignore).
+**
+!.gcloudignore
+!.dockerignore
+!Dockerfile
+!cloudbuild.yaml
+!pyproject.toml
+!requirements-cloud.txt
+!README.md
+!src/
+!src/synthetic_quality/
+!src/synthetic_quality/*.py

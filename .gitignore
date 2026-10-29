@@ -14,6 +14,12 @@ dist/
 *.log
 .env
 .env.*
+*.pem
+*.key
+*service-account*.json
+application_default_credentials.json
+.gcloud/
+.secrets/
 .DS_Store
 Thumbs.db
 data/*

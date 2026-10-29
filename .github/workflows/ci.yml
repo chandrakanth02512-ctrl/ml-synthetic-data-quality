@@ -1,0 +1,30 @@
+name: Offline Python checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements-cloud.txt
+            requirements-lock.txt
+      - name: Install tested dependencies
+        run: python -m pip install -e '.[cloud,dev]' -c requirements-cloud.txt -c requirements-lock.txt
+      - run: python -m pip check
+      - run: python -m ruff check src tests
+      - run: python -m ruff format --check src tests
+      - name: Offline tests (no GCP authentication or calls)
+        run: python -m pytest --cov=synthetic_quality --cov-report=term-missing --cov-fail-under=94.5

@@ -1,0 +1,20 @@
+# Prepared only. Submission builds/pushes an image and can incur charges.
+# No deploy or execute step, no triggers. Use a dedicated build service account.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    env: ['DOCKER_BUILDKIT=1']
+    args:
+      - build
+      - --platform=linux/amd64
+      - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE}:${_TAG}
+      - .
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_IMAGE}:${_TAG}'
+substitutions:
+  _REGION: asia-south1
+  _REPOSITORY: synthetic-quality
+  _IMAGE: synthetic-quality
+  _TAG: phase1-review
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1200s

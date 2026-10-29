@@ -1,0 +1,10 @@
+# Allowlist: no credentials, datasets, reports, models, .git, caches or tests.
+**
+!Dockerfile
+!.dockerignore
+!pyproject.toml
+!requirements-cloud.txt
+!README.md
+!src/
+!src/synthetic_quality/
+!src/synthetic_quality/*.py
