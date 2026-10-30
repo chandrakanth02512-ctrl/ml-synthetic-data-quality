@@ -1,0 +1,35 @@
+# Runtime snapshot: Linux x86_64 / Python 3.12, verified in Codex Cloud.
+# Install with -r for containers; use as -c with .[cloud,dev] for tests.
+# Version pins, not a hash-verified lock. Original Windows snapshot is retained.
+certifi==2026.10.23
+cffi==2.1.1
+charset-normalizer==3.5.2
+cloudpickle==3.1.2
+cryptography==50.0.2
+google-api-core==2.43.2
+google-auth==2.62.0
+google-cloud-core==2.8.0
+google-cloud-storage==3.17.1
+google-crc32c==1.9.0
+google-resumable-media==2.11.0
+googleapis-common-protos==1.76.0
+idna==3.20
+joblib==1.6.0
+narwhals==2.28.0
+numpy==2.5.4
+opentelemetry-api==1.45.2
+pandas==3.1.0
+proto-plus==1.29.0
+protobuf==7.36.2
+pyasn1==0.6.5
+pyasn1-modules==0.4.2
+pycparser==3.12
+python-dateutil==3.0.0
+requests==2.34.2
+scikit-learn==1.9.1
+scipy==1.18.1
+six==1.17.0
+threadpoolctl==3.7.0
+typing-extensions==4.16.0
+tzdata==2026.5
+urllib3==2.8.0

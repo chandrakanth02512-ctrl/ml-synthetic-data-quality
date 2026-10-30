@@ -17,9 +17,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "pytest-cov>=5,<8", "ruff>=0.9,<1"]
+cloud = ["google-cloud-storage>=3.0,<4"]
 
 [project.scripts]
 synthetic-quality = "synthetic_quality.pipeline:main"
+synthetic-quality-cloud = "synthetic_quality.cloud_job:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

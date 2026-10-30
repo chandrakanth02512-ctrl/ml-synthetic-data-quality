@@ -1,13 +1,53 @@
 # ML-Based Synthetic Data Quality & Anomaly Detection
 
-A reproducible, local Python workflow for validating synthetic financial transactions,
+A reproducible Python workflow for validating synthetic financial transactions,
 detecting statistical anomalies, and comparing an Isolation Forest with explicit rules.
-**Phase 1 is implemented and verified.** This is a portfolio engineering project, not a
-validated fraud detection product.
+**The original pipeline is verified; the Phase 1 GCP extension is implemented and
+tested offline in Codex Cloud, with live GCP deployment pending approval.** This is a
+portfolio engineering project, not a validated fraud detection product.
 
 The default experiment generates 5,000 normal training transactions and 1,000 independent
 evaluation transactions with 50 injected anomalies. It validates both datasets, trains
 without evaluation labels, saves a reusable model, and exports auditable reports.
+
+## Phase 1 GCP platform
+
+The new finite `synthetic-quality-cloud` entry point reuses the original `run_pipeline`
+without modifying its generation, validation, model or evaluation logic. Cloud Build
+is prepared to publish a CPU container to Artifact Registry; a Cloud Run **Job** will
+run it once using a dedicated keyless service account. The job stages outputs in a
+temporary container directory, uploads 12 allowlisted artifacts to GCS, and writes an
+immutable completion manifest last.
+
+```mermaid
+flowchart LR
+    Source[Same GitHub repository] --> Build[Cloud Build]
+    Build --> Image[Artifact Registry]
+    Image --> Job[Cloud Run Job: 1 task]
+    Job --> Core[Existing synthetic pipeline]
+    Core --> GCS[GCS datasets, quality reports, evaluation and models]
+    GCS --> Manifest[Completion manifest with generations and hashes]
+```
+
+Uploads use `if_generation_match=0` and generation-pinned read-back verification.
+Retries preserve existing objects, resume matching partial runs, and verify completed
+runs without retraining. Configuration/source/runtime conflicts fail rather than
+overwrite. Run IDs and dataset sizes are configurable through CLI flags or environment
+variables; sizes are capped at 100,000 rows per split. Raw datasets, quality reports,
+evaluation reports, models and run manifests have separate GCS prefixes.
+
+Start with the [GCP deployment guide](docs/gcp-phase1.md) for the complete configuration
+table, object layout, required APIs and minimum IAM, remote build/deployment commands,
+256/100-row smoke test, cost-control checklist and cleanup. The proposed region is
+Mumbai (`asia-south1`), subject to current service/project compatibility checks.
+Development and tests run in hosted Codex Cloud; future managed executions run on GCP.
+**No GCP resources have been created or jobs executed.** Billing/spending controls and
+explicit approval are required before any live provisioning, build or execution.
+
+[Verification evidence](docs/verification.md) distinguishes hosted-Codex checks from
+unverified live GCP behavior. GitHub Actions runs credential-free tests, Ruff checks,
+dependency checks, and a 94.5% coverage floor. The original Windows dependency snapshot
+and measured ML results below are retained.
 
 ## Business problem and objectives
 
@@ -52,11 +92,17 @@ flowchart TD
 ```
 
 Technology: Python 3.11+, NumPy, pandas, scikit-learn, joblib, Pytest,
-pytest-cov, and Ruff. Verified on **Windows x64 / Python 3.13.0**. No cloud,
-containers, distributed engines, databases, external datasets, APIs, or dashboard
-are needed. Package installation needs internet access; execution is local and offline.
+pytest-cov, and Ruff, with the official `google-cloud-storage` client in the optional
+`cloud` extra. The original workflow was verified on **Windows x64 / Python 3.13.0**;
+the extension is verified on **Linux / Python 3.12 in Codex Cloud**. The original CLI
+still runs offline without cloud dependencies. The cloud entry point requires GCS
+and Application Default Credentials supplied by its runtime service account.
 
 ## Local installation: Windows PowerShell and VS Code
+
+These retained instructions describe the original standalone workflow. Current
+development/testing takes place in Codex Cloud; use the deployment guide for the GCP
+extension and do not execute managed pipelines on a laptop.
 
 Open this repository folder in VS Code. Use a Python 3.11 or newer interpreter;
 Python 3.13 is recommended for reproducing the checked-in example reports.
@@ -297,8 +343,11 @@ it can be restored with `RuleBaseline(**json.load(file))`.
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-The verified suite executed **82 tests: 82 passed, 0 failed**. Coverage was **94%**
-with branch measurement enabled. The CLI subprocess is exercised by a real process,
+The original suite executed **82 tests: 82 passed, 0 failed**, reconfirmed before the
+cloud changes at **94.5%** coverage with branch measurement enabled. The new cloud
+suite additionally exercises real generation/training with fake GCS storage and no
+GCP credentials or paid API calls; see [current exact results](docs/verification.md).
+The original CLI subprocess is exercised by a real process,
 but its lines are not included in parent-process coverage. This is measured coverage,
 not a guarantee of correctness or real-world detection accuracy.
 
@@ -326,9 +375,21 @@ Pytest clears its selected base temporary directory: reserve that path for tests
 │   └── settings.json
 ├── pyproject.toml
 ├── requirements-lock.txt
+├── requirements-cloud.txt    # tested Linux/Python 3.12 runtime version pins
+├── Dockerfile               # non-root finite CPU job
+├── .dockerignore
+├── .gcloudignore
+├── cloudbuild.yaml          # remote build/push only; no deploy/execute
+├── .github/workflows/ci.yml  # credential-free checks
+├── docs/
+│   ├── gcp-phase1.md         # architecture, configuration, IAM, cost and deployment
+│   └── verification.md      # exact evidence and live-cloud limitations
 ├── README.md
 ├── src/synthetic_quality/
 │   ├── __init__.py
+│   ├── cloud_config.py       # bounded environment/CLI config and safe object paths
+│   ├── cloud_job.py          # request, existing pipeline, artifacts, completion
+│   ├── gcs.py                # create-only GCS adapter and read-back verification
 │   ├── schema.py             # data contract and simulation constants
 │   ├── data_generator.py     # independent seeded datasets and separate truth
 │   ├── quality_checks.py     # non-mutating structured validation
@@ -339,6 +400,8 @@ Pytest clears its selected base temporary directory: reserve that path for tests
 │   └── pipeline.py           # orchestration and command-line entry point
 ├── tests/
 │   ├── conftest.py
+│   ├── test_cloud_config.py
+│   ├── test_cloud_job.py
 │   ├── test_data_generator.py
 │   ├── test_quality_checks.py
 │   ├── test_features.py
@@ -369,8 +432,10 @@ temporary files, generated datasets, and binary models are excluded from Git.
 
 ## Limitations and future enhancements
 
-Implemented Phase 1 covers the complete local workflow described above. It does
-not demonstrate real fraud detection, production throughput, or cloud deployment.
+Implemented Phase 1 covers the original workflow plus a GCP-ready execution layer.
+It does not demonstrate real fraud detection, production throughput, or verified
+live cloud deployment. GCP IAM, ADC, regional availability, resource sizing and costs
+remain unverified until the approved deployment smoke test.
 The small synthetic population has simplified independent categories/amounts,
 fixed currency relationships, artificial UTC spending hours, no seasonal or
 customer behavior, and only two conspicuous anomaly types. A single evaluation
@@ -381,25 +446,15 @@ model limitation, not an unresolved execution error.
 Planned, **not implemented**: separate calibration and holdout splits; repeated-seed
 evaluation; controlled feature ablations and threshold analysis; realistic temporal
 and customer histories with past-only frequency windows; drift/monitoring;
-MLflow experiment tracking; CI/CD; and larger-scale PySpark and advanced SQL
-workflows. None of these is required to run Phase 1.
+MLflow experiment tracking; automated deployment; and larger-scale PySpark and
+advanced SQL workflows. Dataproc, BigQuery, Vertex AI and Cloud Workflows are outside
+this phase. Credential-free CI is implemented; deployment remains manual and gated.
 
-## Local Git and publication readiness
+## Review and publication
 
-The local repository is initialized; no commit or push is made by this workflow.
-Source, tests, configuration, documentation, and small reproducible report examples
-are ready for review and a first commit. The work is suitable as a reproducible
-engineering portfolio, with the measured model limitation clearly disclosed.
-
-From the repository root, review and commit with:
-
-```powershell
-git status --short
-git add .gitattributes .gitignore .vscode pyproject.toml requirements-lock.txt README.md src tests data/.gitkeep models/.gitkeep reports/.gitkeep reports/examples
-git diff --cached --check
-git diff --cached --stat
-git commit -m "Build verified Phase 1 synthetic data quality and anomaly detection"
-```
-
-No GitHub remote or push is required. No unresolved runtime or test failures remain
-in the verified Windows/Python environment; other environments remain unverified.
+Changes stay in the existing
+[ml-synthetic-data-quality repository](https://github.com/chandrakanth02512-ctrl/ml-synthetic-data-quality)
+on a feature branch for pull-request review; merging is a separate action. Generated
+datasets/models, credentials, and test outputs must remain outside Git. Existing small
+example reports are retained as historical evaluation evidence. Publishing source or
+passing CI does not authorize GCP deployment or establish live-cloud verification.
