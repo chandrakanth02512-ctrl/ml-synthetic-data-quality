@@ -49,15 +49,26 @@ python3 -m pip check
 
 CI has read-only GitHub permissions and no OIDC permission or Google auth step.
 Deployment/execution workflows are manual only and the checked-in configuration
-is disabled with null build/digest and false bypass attestations.
+is disabled with the owner-verified replacement build/digest recorded and both
+bypass attestations still `false`.
 
 ## Live verification still required
 
 Current environment observations report no outbound identity, no credential
 bindings and no GCP API egress. `gcloud` and an outbound identity manifest are
 unavailable. No authentication workaround or live GCP command was attempted.
-The successful replacement build ID, digest and source provenance therefore remain
-unverified. The README gives exact read-only Cloud Shell retrieval commands.
+The owner subsequently supplied Cloud Shell verification of replacement build
+`fc1ca075-570b-45da-b588-977423c49f0d` and matching immutable image digest
+`sha256:35a1e032472e06e4b21c55996b46faa0090deef3a4bdee710f27ddcb85e33116`.
+Build and Docker step were `SUCCESS`, with the expected build identity/source
+bucket. These public values are recorded in disabled configuration. Codex has not
+independently queried them. Source provenance/consumed bytes remain unverified;
+see `source-provenance.md` for the code audit, missing evidence and exact read-only
+metadata request. A valid image identity does not satisfy source-content proof.
+
+The approval policy is unchanged. The sole-owner constraint and alternatives are
+reviewed in `approval-options.md`; the current non-self-review rule prevents the
+owner approving their own dispatch. No alternative has been applied.
 
 Before activation, the owner must review that image, the source provenance,
 GitHub environment features/reviewers/main-only rules/disabled bypass, effective

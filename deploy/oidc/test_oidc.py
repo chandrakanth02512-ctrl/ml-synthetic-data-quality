@@ -94,7 +94,14 @@ class OidcTests(unittest.TestCase):
         )
 
     def test_default_configuration_is_disabled(self):
-        self.assertFalse(settings.load_config()["enabled"])
+        config = settings.load_config()
+        self.assertFalse(config["enabled"])
+        self.assertRegex(config["image_digest"], r"^sha256:[0-9a-f]{64}$")
+        self.assertNotEqual(config["replacement_build_id"], settings.KNOWN_CANCELLED)
+        self.assertEqual(
+            config["environment_bypass_disabled_attested"],
+            {"gcp-deploy": False, "gcp-execute": False},
+        )
         with self.assertRaisesRegex(RuntimeError, "disabled"):
             settings.load_config(require_enabled=True)
 

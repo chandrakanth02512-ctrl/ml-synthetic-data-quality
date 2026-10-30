@@ -5,50 +5,50 @@ execution or Cloud Build submission were performed.** The proposed authorization
 must be reviewed and explicitly approved by the project owner before setup.
 
 The application source pin remains
-`34cc3d46b662a9f0560c3ff846d68b327d52e4b8`; the reported replacement image still
-requires the live verification below. These workflows never build an image and
+`34cc3d46b662a9f0560c3ff846d68b327d52e4b8`; source provenance still requires the
+review below. These workflows never build an image and
 never access, delete or reset the Cloud Shell recovery receipts. PR #2 remains a
 separate unmerged recovery-tools change; this authentication proposal does not
 depend on its tools or run another recovery attempt.
 
-## Current blocker: immutable image pin not supplied
+## Recorded image identity; activation and source verification still pending
 
-The user reports a successful replacement image in live GCP. Its exact replacement
-build ID and SHA-256 digest are not in GitHub, and Codex Cloud has no GCP identity,
-`gcloud`, or permitted Google API egress. They have **not** been independently
-verified. `config.json` therefore deliberately contains:
+The owner verified the successful replacement Build and Docker step in Cloud Shell,
+matched its published digest against Artifact Registry, and confirmed the dedicated
+build account and recovery source bucket. The reviewed `config.json` now records:
 
 ```json
-{"enabled": false, "image_digest": null, "replacement_build_id": null}
+{
+  "enabled": false,
+  "image_digest": "sha256:35a1e032472e06e4b21c55996b46faa0090deef3a4bdee710f27ddcb85e33116",
+  "replacement_build_id": "fc1ca075-570b-45da-b588-977423c49f0d"
+}
 ```
 
+The full immutable image URI is
+`asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality@sha256:35a1e032472e06e4b21c55996b46faa0090deef3a4bdee710f27ddcb85e33116`.
+This is owner-reported live verification; Codex has not independently queried GCP.
 No digest is guessed and no tag/latest fallback exists. Both manual workflows stop
 before requesting GCP credentials while disabled; authorization `apply` also stops.
 The rest of `config.json` fixes the planned data bucket and `smoke-001` namespace.
 Both `environment_bypass_disabled_attested` entries also default to `false`.
 
-Retrieve these values in an already authenticated Google Cloud Shell using reads:
+To recheck these exact values in authenticated Google Cloud Shell using reads:
 
 ```bash
-gcloud builds list --project=gcp-intelligent-data-quality --region=asia-south1 \
-  --filter='status=SUCCESS' \
-  --format='table(id,status,createTime,results.images.name,results.images.digest)'
-
-# Substitute the inspected successful replacement ID; do not select "latest" blindly.
-gcloud builds describe REPLACEMENT_BUILD_ID \
+gcloud builds describe fc1ca075-570b-45da-b588-977423c49f0d \
   --project=gcp-intelligent-data-quality --region=asia-south1 --format=json
 
 gcloud artifacts docker images list \
   asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1 \
   --project=gcp-intelligent-data-quality --include-tags --format=json
 
-# Substitute the exact sha256:... digest returned by the successful Build result.
 gcloud artifacts docker images describe \
-  'asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality@sha256:REPLACE_WITH_64_HEX_DIGITS' \
+  'asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality@sha256:35a1e032472e06e4b21c55996b46faa0090deef3a4bdee710f27ddcb85e33116' \
   --project=gcp-intelligent-data-quality --format=json
 ```
 
-Record the exact **replacement build ID**, **`sha256:` digest**, and **full immutable
+Retain the exact **replacement build ID**, **`sha256:` digest**, and **full immutable
 image URI**. Exclude cancelled build `6f75c5dd-cc3a-4d47-9c9d-43f51fa3c4ba`.
 Require Build and Docker-step `SUCCESS`, the declared replacement revision tag
 `34cc3d46b662a9f0560c3ff846d68b327d52e4b8-recovery1`, and equality between the Build
@@ -56,12 +56,14 @@ published digest and Artifact Registry digest. Any differing provenance/settings
 requires review, not weakened validation or another build.
 
 The revision tag is a declared label, not independent proof of the source archive.
-The owner must also inspect the Build's `source`/`sourceProvenance`, service account,
-Docker step arguments and available provenance against the reviewed replacement
-attempt. Do not activate if the source cannot be tied to the reviewed revision.
+The source audit and exact outstanding evidence are in
+[source-provenance.md](source-provenance.md). Build success, a matching image digest,
+the correct build identity and source bucket establish different facts from source
+content identity. Do not activate if the consumed source cannot be tied to the pin.
 
-Have those public values recorded in `config.json` through code review. Enable the
-configuration only as part of owner-approved activation; do not merely paste a tag.
+The verified public values are recorded through this draft PR. Keep `enabled: false`
+and both bypass attestations `false` until the remaining checks and owner-approved
+activation are complete.
 
 ## Trust and approval boundaries
 
@@ -113,6 +115,10 @@ that policy choice back for explicit review. The package never silently weakens 
 Required-reviewer/environment features depend on the repository's GitHub plan;
 missing/inaccessible rules block authentication. No environment is automatically
 created or made permissive by setup.
+
+The owner is the sole repository owner. The current policy is intentionally
+unchanged; see [approval-options.md](approval-options.md) for secure alternatives
+and their tradeoffs before choosing any policy change.
 
 Manual workflows only become available after a separately approved merge to `main`.
 Neither this draft PR nor its CI trusts the feature branch or runs those workflows.
@@ -237,8 +243,9 @@ remain unchanged. The new tools use Python standard library only. The offline CI
 has no OIDC permission or GCP auth step.
 
 Live WIF token exchange, GitHub gate availability, IAM propagation, quotas, policy
-constraints, registry digest, job readiness/execution and actual spend remain
-unverified. Parent/group/deny/PAB grants require owner review in addition to direct
+constraints, independent image/provenance verification, job readiness/execution and
+actual spend remain unverified by Codex. Parent/group/deny/PAB grants require owner
+review in addition to direct
 binding inspection. APIs/identities alone do not start compute. Later execution and
 retained artifacts/logs may be billed; neither the earlier ₹100 experiment estimate
 nor the ₹500 alert is a hard spending cap. No new build is part of this procedure.
