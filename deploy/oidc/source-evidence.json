@@ -1,0 +1,50 @@
+{
+  "evidence_origin": "Owner-provided authenticated Cloud Shell output; not independently fetched by Codex",
+  "project_id": "gcp-intelligent-data-quality",
+  "region": "asia-south1",
+  "replacement_build_id": "fc1ca075-570b-45da-b588-977423c49f0d",
+  "status": "SUCCESS",
+  "source": {
+    "storageSource": {
+      "bucket": "synthetic-quality-984592102391-source-as1",
+      "generation": "1793365313077688",
+      "object": "source/recovery-6f75c5dd-cc3a-4d47-9c9d-43f51fa3c4ba/1793365312.461269-5cb68052b40b42e7b5c96280d2951453.tgz"
+    }
+  },
+  "sourceProvenance": {
+    "resolvedStorageSource": {
+      "bucket": "synthetic-quality-984592102391-source-as1",
+      "generation": "1793365313077688",
+      "object": "source/recovery-6f75c5dd-cc3a-4d47-9c9d-43f51fa3c4ba/1793365312.461269-5cb68052b40b42e7b5c96280d2951453.tgz"
+    },
+    "fileHashes": {
+      "gs://synthetic-quality-984592102391-source-as1/source/recovery-6f75c5dd-cc3a-4d47-9c9d-43f51fa3c4ba/1793365312.461269-5cb68052b40b42e7b5c96280d2951453.tgz#1793365313077688": {
+        "fileHash": [
+          {"type": "MD5", "value": "QKCWKHBFiX1cRB72uIlo_g=="},
+          {"type": "SHA256", "value": "hNaeFMOTTYll7dbHNEF3EIFssgphXXE4QbwhxoYSUZ4="}
+        ]
+      }
+    }
+  },
+  "serviceAccount": "projects/gcp-intelligent-data-quality/serviceAccounts/synthetic-quality-build@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+  "steps": [
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "build",
+        "--platform=linux/amd64",
+        "--tag=asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality:34cc3d46b662a9f0560c3ff846d68b327d52e4b8-recovery1",
+        "."
+      ],
+      "env": ["DOCKER_BUILDKIT=1"],
+      "status": "SUCCESS"
+    }
+  ],
+  "substitutions": {
+    "_IMAGE": "synthetic-quality",
+    "_REGION": "asia-south1",
+    "_REPOSITORY": "synthetic-quality-phase1",
+    "_TAG": "34cc3d46b662a9f0560c3ff846d68b327d52e4b8-recovery1"
+  },
+  "reported_image_uri": "asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality@sha256:35a1e032472e06e4b21c55996b46faa0090deef3a4bdee710f27ddcb85e33116"
+}

@@ -26,12 +26,17 @@ python3 -m ruff format --check src tests deploy/oidc
 python3 -m pip check
 ```
 
-- **78 OIDC tests passed.** Fakes/mocks cover separate trust pools, exact numeric
+- **95 OIDC/source tests passed.** Fakes/mocks cover separate trust pools, exact numeric
   IDs/main/manual event/workflow/environment/audiences, least-privilege grants,
   additive idempotent setup, disabled configuration, existing-resource drift,
   cancelled-build rejection, Build/registry digest equality, approval rules,
   owner attestation for unreported bypass settings, job UID/etag/history,
   digest-only creation, and no automatic POST retry or execution from deployment.
+- The **17 archive tests** additionally cover supplied hash decoding, full pinned
+  file fixtures, modified/missing/extra/duplicate inputs, generation and Build drift,
+  MD5-only rejection, unsafe paths/links/devices/modes, compressed/decompressed size
+  bounds and hidden trailing content. All archives are local synthetic fixtures,
+  not copies of the live consumed source. No extraction or activation is performed.
 - Ruff **0.17.3** lint and formatting passed over `src`, `tests`, `deploy/oidc`.
 - Existing Python **3.12.14** environment dependency consistency passed. New
   deployment tools import only standard-library and sibling modules; they install
@@ -62,9 +67,14 @@ The owner subsequently supplied Cloud Shell verification of replacement build
 `sha256:35a1e032472e06e4b21c55996b46faa0090deef3a4bdee710f27ddcb85e33116`.
 Build and Docker step were `SUCCESS`, with the expected build identity/source
 bucket. These public values are recorded in disabled configuration. Codex has not
-independently queried them. Source provenance/consumed bytes remain unverified;
-see `source-provenance.md` for the code audit, missing evidence and exact read-only
-metadata request. A valid image identity does not satisfy source-content proof.
+independently queried them. The owner then supplied matching submitted/resolved
+source generation `1793365313077688`, archive MD5/SHA-256, exact Docker arguments,
+environment and substitutions. The metadata is consistent with the pinned recovery
+configuration, and is recorded in `source-evidence.json`. The live archive itself
+has not been supplied or downloaded, so comparison of consumed bytes to the Git
+pin remains pending. See `source-provenance.md` for exact generation-specific read
+and offline verification instructions. A valid image/archive identity does not by
+itself satisfy source-content proof. Deployment and execution remain disabled.
 
 The approval policy is unchanged. The sole-owner constraint and alternatives are
 reviewed in `approval-options.md`; the current non-self-review rule prevents the

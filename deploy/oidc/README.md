@@ -60,6 +60,11 @@ The source audit and exact outstanding evidence are in
 [source-provenance.md](source-provenance.md). Build success, a matching image digest,
 the correct build identity and source bucket establish different facts from source
 content identity. Do not activate if the consumed source cannot be tied to the pin.
+The subsequently supplied resolved object/generation and archive hashes are
+consistent and recorded in `source-evidence.json`. The remaining source check is
+to download that exact generation and run the offline `verify_source_archive.py`
+comparison against the pinned upload allowlist. The archive has not been downloaded
+or verified by Codex; matching tags or archive hashes alone do not prove Git contents.
 
 The verified public values are recorded through this draft PR. Keep `enabled: false`
 and both bypass attestations `false` until the remaining checks and owner-approved

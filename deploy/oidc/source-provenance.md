@@ -1,6 +1,6 @@
 # Replacement image and source provenance review
 
-## Result: image identity recorded; consumed source identity not yet established
+## Result: consistent consumed-archive metadata; Git contents still pending
 
 The owner supplied these Cloud Shell verification results:
 
@@ -12,13 +12,29 @@ The owner supplied these Cloud Shell verification results:
 | Artifact Registry comparison | Exact digest match, owner verified |
 | Build identity | Expected dedicated build account, owner verified |
 | Source bucket | Expected recovery source bucket, owner verified |
-| Resolved source object/generation and source bytes | Not supplied; unverified |
+| Submitted / resolved source | Same bucket, object and generation, owner supplied |
+| Source generation | `1793365313077688` |
+| Source archive SHA-256 | `84d69e14c3934d8965edd6c734417710816cb20a615d713841bc21c68612519e` |
+| Source archive MD5 | `40a096287045897d5c441ef6b88968fe` |
+| Uploaded archive contents | Not yet available to compare |
 | Link from consumed source bytes to pinned Git commit | Not established |
 
 Codex has no GCP identity or permitted GCP API egress and has not independently
-queried the Build or registry. No raw Build provenance, source archive or attestation
-for this build is available in the workspace/repository. Recording the owner's
-verified image identity does not mark source verification complete or enable setup.
+queried the Build or registry. The supplied non-secret excerpts are recorded in
+`source-evidence.json`, explicitly labelled as owner-provided evidence rather than
+a signed attestation or independently fetched API response. Recording this evidence
+does not mark source verification complete or enable setup.
+
+The supplied `source.storageSource` exactly equals
+`sourceProvenance.resolvedStorageSource`. The `fileHashes` key identifies that same
+object generation. Both base64 hash values decode to the expected MD5/SHA-256
+lengths; URL-safe and standard base64 are accepted. The given Docker arguments,
+`DOCKER_BUILDKIT=1`, substitutions and service account match pinned `cloudbuild.yaml`
+after the reviewed recovery substitutions. The archive SHA-256 above is a different
+digest from the published container image digest; they must not be interchanged.
+
+This establishes a precise archive to inspect. A hash identifies archive bytes but
+does not reveal their contents or bind them to a Git commit without comparison.
 
 ## What the repository audit establishes
 
@@ -39,7 +55,7 @@ server-side source evidence.
 The `_TAG` revision suffix, successful Docker step, correct bucket/account and
 matching output digest do not individually or together prove source contents.
 
-## Exact read-only Cloud Shell evidence request
+## Exact additional read-only verification
 
 From an already authorized Cloud Shell, inspect only this existing build:
 
@@ -49,7 +65,10 @@ gcloud builds describe fc1ca075-570b-45da-b588-977423c49f0d \
   --format='json(id,projectId,status,serviceAccount,source,sourceProvenance,steps.name,steps.status,steps.args,substitutions,results.images,options.sourceProvenanceHash)'
 ```
 
-Do not share credentials, token output or unrelated private build settings.
+The owner already supplied the requested source fields. A fresh read may confirm
+they remain consistent and inspect any omitted entrypoint, directory, additional
+steps or secrets settings; stop on unexpected behavior. Do not share credentials,
+token output or unrelated private build settings.
 Require the expected project/build/result digest, and inspect:
 
 1. `serviceAccount` should identify
@@ -64,26 +83,64 @@ Require the expected project/build/result digest, and inspect:
 4. Verify the single Docker step's arguments against pinned `cloudbuild.yaml`,
    including context, platform and image name after substitutions. Inspect any
    unexpected step/entrypoint/source behavior before proceeding.
-5. If using a GCS source archive, retrieve only the exact resolved object generation
+5. Retrieve only the exact resolved GCS object generation
    with authorized read access; preserve the original object and receipts. Compare
    its hash to source provenance when available, then compare the regular-file
    bytes/inventory to the pinned Git blobs and `.gcloudignore` allowlist. Inspect
    the archive without extracting untrusted links/paths or executing its contents.
    Extra, missing, duplicate or changed inputs require review, not adoption.
 
+Use a fresh Cloud Shell directory so no existing checkout, archive or receipt is
+overwritten. These commands retrieve GitHub review code, read the existing GCS
+object and perform an offline comparison; they do not build, deploy or enable IAM.
+They are review instructions, not commands executed by Codex:
+
+```bash
+set -euo pipefail
+review_dir="$(mktemp -d "$HOME/synthetic-quality-source-review.XXXXXX")"
+git clone --branch deploy/github-oidc --single-branch \
+  https://github.com/chandrakanth02512-ctrl/ml-synthetic-data-quality.git \
+  "$review_dir/repository"
+cd "$review_dir/repository"
+git log -1 --format='%H %s'
+# Inspect this checkout against the reviewed PR commit before proceeding.
+
+gcloud storage cp \
+  'gs://synthetic-quality-984592102391-source-as1/source/recovery-6f75c5dd-cc3a-4d47-9c9d-43f51fa3c4ba/1793365312.461269-5cb68052b40b42e7b5c96280d2951453.tgz#1793365313077688' \
+  "$review_dir/source.tgz" --project=gcp-intelligent-data-quality
+
+python3 deploy/oidc/verify_source_archive.py "$review_dir/source.tgz"
+```
+
+Expected result: `ARCHIVE_CONTENTS_MATCH_PINNED_APPLICATION`, pinned application
+commit `34cc3d46b662a9f0560c3ff846d68b327d52e4b8`, exact build/image/source identities,
+the archive SHA-256 above and **19 matched files**. The verifier first checks the
+supplied provenance and compressed archive SHA-256 (plus MD5 consistency), then
+compares every allowed regular file to the pinned Git blob. It rejects extra,
+missing or duplicate inputs, unsafe paths, links/devices/sparse entries, executable
+or special file modes, hidden trailing data and oversized compressed/decompressed
+contents. It never extracts, executes, downloads, writes evidence, changes config
+or reads recovery receipts. No source/archive success is claimed from unit fixtures.
+
+Return the verifier's JSON result for review. A `STOP`, permission failure, missing
+generation, hash mismatch or different inventory leaves source identity unverified.
+Do not repair the archive, use a newer generation, change the pin, retry a build,
+set activation flags or weaken verification. Preserve the downloaded evidence.
+
 Generation-specific object reads/local downloads do not modify GCP resources but
-may incur small storage read/transfer charges. No download has been performed here.
+may incur small storage read/transfer charges. No live archive download was
+performed by Codex. Synthetic test archives are unrelated to this live archive.
 Do not substitute the latest object generation or a new checkout for the consumed
 archive. A fresh checkout verifies the reference side of a comparison only.
 
 Google's [Cloud Build API definition](https://github.com/googleapis/googleapis/blob/master/google/devtools/cloudbuild/v1/cloudbuild.proto)
 defines resolved storage generations and source hashes. `fileHashes` is populated
 only when source-provenance hashing is requested; an archive source gets an archive
-hash. The pinned configuration does not request `sourceProvenanceHash`, so missing
-hashes may be expected and must be reported as unavailable. They are not evidence
-that the source matched, and do not authorize another build.
+hash. Hashes are available in the owner's supplied output and are used here. The
+stored configuration's lack of an explicit hash option does not negate the returned
+hashes and does not require a configuration change or another build.
 
 If metadata, immutable source generation, permissions or trusted provenance is
 insufficient, leave source identity unverified and stop before activation. Even
-matching source bytes do not imply a fully reproducible image: the original
+matching source-file bytes do not imply a fully reproducible image: the original
 Docker base tag and downloaded package artifacts are not all hash-pinned.
