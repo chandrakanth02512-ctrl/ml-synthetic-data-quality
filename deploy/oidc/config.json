@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "image_digest": null,
+  "replacement_build_id": null,
+  "environment_bypass_disabled_attested": {
+    "gcp-deploy": false,
+    "gcp-execute": false
+  },
+  "data_bucket": "synthetic-quality-984592102391-data-as1",
+  "run_id": "smoke-001"
+}

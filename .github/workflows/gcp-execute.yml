@@ -1,0 +1,87 @@
+name: GCP manual smoke execution
+run-name: GCP execute reviewed smoke job once
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_digest:
+        description: Copy the reviewed immutable sha256 digest from deploy/oidc/config.json
+        required: true
+        type: string
+      job_uid:
+        description: Copy the reviewed deployed job UID from the deployment result
+        required: true
+        type: string
+      confirm_action:
+        description: I approve one execution of the reviewed small smoke job
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: gcp-synthetic-quality-control
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      github.repository_id == '1436792250' &&
+      github.repository_owner_id == '341606319'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: gcp-execute
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      CONFIRM_DIGEST: ${{ inputs.confirm_digest }}
+      CONFIRM_ACTION: ${{ inputs.confirm_action }}
+      CONFIRM_JOB_UID: ${{ inputs.job_uid }}
+    steps:
+      - name: Check out approved main workflow source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up standard-library runtime
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Validate independent execution approval before requesting GCP credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: deploy/oidc
+        run: |
+          python - <<'PY'
+          import os
+          from settings import load_config
+          from job_control import verify_dispatch
+          from verify_gate import verify_gate
+          config = load_config(require_enabled=True)
+          verify_dispatch(os.environ, "execute", config)
+          verify_gate(
+              "execute",
+              owner_attested=config["environment_bypass_disabled_attested"]["gcp-execute"],
+          )
+          PY
+      - name: Obtain short-lived execution identity through GitHub OIDC
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: gcp-intelligent-data-quality
+          workload_identity_provider: projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-execute/providers/github
+          audience: https://iam.googleapis.com/projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-execute/providers/github
+          service_account: synthetic-quality-executor@gcp-intelligent-data-quality.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_lifetime: 300s
+          create_credentials_file: false
+          export_environment_variables: false
+          cleanup_credentials: true
+      - name: Request one execution with no overrides; return without waiting for completion
+        env:
+          GCP_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: python deploy/oidc/job_control.py execute

@@ -1,0 +1,130 @@
+{
+  "bindings": [
+    {
+      "member": "principalSet://iam.googleapis.com/projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-deploy/attribute.repository_id/1436792250",
+      "resource": "synthetic-quality-deployer@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "role": "roles/iam.workloadIdentityUser",
+      "scope": "service_account"
+    },
+    {
+      "member": "principalSet://iam.googleapis.com/projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-execute/attribute.repository_id/1436792250",
+      "resource": "synthetic-quality-executor@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "role": "roles/iam.workloadIdentityUser",
+      "scope": "service_account"
+    },
+    {
+      "member": "serviceAccount:synthetic-quality-deployer@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "resource": "gcp-intelligent-data-quality",
+      "role": "projects/gcp-intelligent-data-quality/roles/syntheticQualityJobDeployer",
+      "scope": "project"
+    },
+    {
+      "member": "serviceAccount:synthetic-quality-deployer@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "resource": "synthetic-quality-phase1",
+      "role": "roles/artifactregistry.reader",
+      "scope": "repository"
+    },
+    {
+      "member": "serviceAccount:synthetic-quality-deployer@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "resource": "synthetic-quality-runtime@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "role": "roles/iam.serviceAccountUser",
+      "scope": "service_account"
+    },
+    {
+      "member": "serviceAccount:synthetic-quality-executor@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "resource": "synthetic-quality-phase1-smoke",
+      "role": "projects/gcp-intelligent-data-quality/roles/syntheticQualityJobExecutor",
+      "scope": "job"
+    }
+  ],
+  "deferred_rule": "If job is absent, owner reruns this procedure after approved deployment to add the exact-job executor grant. No project-wide execute or deployer setIamPolicy.",
+  "enable_apis": [
+    "iamcredentials.googleapis.com",
+    "sts.googleapis.com"
+  ],
+  "pools": [
+    {
+      "id": "synthetic-quality-deploy",
+      "name": "projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-deploy",
+      "provider": {
+        "allowedAudiences": [
+          "https://iam.googleapis.com/projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-deploy/providers/github"
+        ],
+        "attributeCondition": "attribute.repository_id == '1436792250' && attribute.repository_owner_id == '341606319' && attribute.ref == 'refs/heads/main' && attribute.ref_type == 'branch' && attribute.event_name == 'workflow_dispatch' && attribute.workflow_ref == 'chandrakanth02512-ctrl/ml-synthetic-data-quality/.github/workflows/gcp-deploy.yml@refs/heads/main' && attribute.environment == 'gcp-deploy'",
+        "attributeMapping": {
+          "attribute.environment": "assertion.environment",
+          "attribute.event_name": "assertion.event_name",
+          "attribute.ref": "assertion.ref",
+          "attribute.ref_type": "assertion.ref_type",
+          "attribute.repository_id": "assertion.repository_id",
+          "attribute.repository_owner_id": "assertion.repository_owner_id",
+          "attribute.workflow_ref": "assertion.workflow_ref",
+          "google.subject": "assertion.sub"
+        },
+        "id": "github",
+        "issuerUri": "https://token.actions.githubusercontent.com",
+        "name": "projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-deploy/providers/github"
+      },
+      "service_account": "synthetic-quality-deployer@gcp-intelligent-data-quality.iam.gserviceaccount.com"
+    },
+    {
+      "id": "synthetic-quality-execute",
+      "name": "projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-execute",
+      "provider": {
+        "allowedAudiences": [
+          "https://iam.googleapis.com/projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-execute/providers/github"
+        ],
+        "attributeCondition": "attribute.repository_id == '1436792250' && attribute.repository_owner_id == '341606319' && attribute.ref == 'refs/heads/main' && attribute.ref_type == 'branch' && attribute.event_name == 'workflow_dispatch' && attribute.workflow_ref == 'chandrakanth02512-ctrl/ml-synthetic-data-quality/.github/workflows/gcp-execute.yml@refs/heads/main' && attribute.environment == 'gcp-execute'",
+        "attributeMapping": {
+          "attribute.environment": "assertion.environment",
+          "attribute.event_name": "assertion.event_name",
+          "attribute.ref": "assertion.ref",
+          "attribute.ref_type": "assertion.ref_type",
+          "attribute.repository_id": "assertion.repository_id",
+          "attribute.repository_owner_id": "assertion.repository_owner_id",
+          "attribute.workflow_ref": "assertion.workflow_ref",
+          "google.subject": "assertion.sub"
+        },
+        "id": "github",
+        "issuerUri": "https://token.actions.githubusercontent.com",
+        "name": "projects/984592102391/locations/global/workloadIdentityPools/synthetic-quality-execute/providers/github"
+      },
+      "service_account": "synthetic-quality-executor@gcp-intelligent-data-quality.iam.gserviceaccount.com"
+    }
+  ],
+  "project": "gcp-intelligent-data-quality",
+  "project_number": "984592102391",
+  "region": "asia-south1",
+  "required_apis": [
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "iam.googleapis.com",
+    "run.googleapis.com",
+    "serviceusage.googleapis.com"
+  ],
+  "roles": [
+    {
+      "id": "syntheticQualityJobDeployer",
+      "name": "projects/gcp-intelligent-data-quality/roles/syntheticQualityJobDeployer",
+      "permissions": [
+        "run.jobs.create",
+        "run.jobs.get"
+      ],
+      "scope": "project",
+      "title": "Synthetic quality create-only deployer"
+    },
+    {
+      "id": "syntheticQualityJobExecutor",
+      "name": "projects/gcp-intelligent-data-quality/roles/syntheticQualityJobExecutor",
+      "permissions": [
+        "run.jobs.run",
+        "run.jobs.get",
+        "run.executions.get",
+        "run.executions.list"
+      ],
+      "scope": "job",
+      "title": "Synthetic quality exact-job executor"
+    }
+  ]
+}
