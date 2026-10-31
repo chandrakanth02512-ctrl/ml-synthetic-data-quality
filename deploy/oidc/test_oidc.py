@@ -100,8 +100,8 @@ class OidcTests(unittest.TestCase):
     def test_default_configuration_is_disabled(self):
         config = settings.load_config()
         self.assertFalse(config["enabled"])
-        self.assertEqual(config["approval_mode"], "independent")
-        self.assertFalse(config["solo_owner_approval_authorized"])
+        self.assertEqual(config["approval_mode"], "solo-owner")
+        self.assertTrue(config["solo_owner_approval_authorized"])
         self.assertRegex(config["image_digest"], r"^sha256:[0-9a-f]{64}$")
         self.assertNotEqual(config["replacement_build_id"], settings.KNOWN_CANCELLED)
         self.assertEqual(

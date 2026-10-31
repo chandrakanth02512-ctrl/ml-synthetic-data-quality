@@ -87,6 +87,33 @@ class ReviewReadTests(unittest.TestCase):
             self.assertNotIn("private-fixture", str(captured.exception))
             self.assertNotIn("fake-token", str(captured.exception))
 
+    def test_get_iam_policy_post_is_a_fixed_read_payload(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def read(self):
+                return b'{"bindings": []}'
+
+        with patch("review_read.urllib.request.build_opener") as factory:
+            factory.return_value.open.return_value = Response()
+            read.request(
+                "POST",
+                "https://cloudresourcemanager.googleapis.com/v1/projects/p:getIamPolicy",
+                token="fake-token",
+            )
+        req = factory.return_value.open.call_args.args[0]
+        self.assertEqual(json.loads(req.data), {"options": {"requestedPolicyVersion": 3}})
+        with self.assertRaises(RuntimeError):
+            read.validate_request(
+                "POST",
+                "https://cloudresourcemanager.googleapis.com/v1/projects/p:setIamPolicy",
+                None,
+            )
+
     def test_pagination_is_complete_and_repeated_tokens_stop(self):
         with patch.object(
             read,

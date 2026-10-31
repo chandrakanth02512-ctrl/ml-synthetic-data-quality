@@ -32,8 +32,9 @@ No digest is guessed and no tag/latest fallback exists. Both manual workflows st
 before requesting GCP credentials while disabled; authorization `apply` also stops.
 The rest of `config.json` fixes the planned data bucket and `smoke-001` namespace.
 Both `environment_bypass_disabled_attested` entries also default to `false`.
-`approval_mode` remains `independent` and `solo_owner_approval_authorized` remains
-`false`; the proposed solo-owner policy cannot activate under these defaults.
+The owner approved the design only: `approval_mode` is now `solo-owner` and
+`solo_owner_approval_authorized` is `true`. This does not enable credentials,
+workflows or live settings; `enabled` and both bypass attestations remain `false`.
 
 To recheck these exact values in authenticated Google Cloud Shell using reads:
 
@@ -131,9 +132,9 @@ created or made permissive by setup.
 
 For this sole-owner personal project, the recommended prepared alternative is
 explicit owner approval in both separate environments, with self-review permitted
-only after a separate reviewed policy authorization. No setting is changed now;
-see [approval-options.md](approval-options.md). Independent review remains the
-default; `solo-owner` mode requires only the exact owner reviewer and verifies
+under the now-approved design. No live setting is changed now;
+see [approval-options.md](approval-options.md). `solo-owner` is the selected
+but inactive design; it requires only the exact owner reviewer and verifies
 protected main/current dispatch commit before GCP authentication.
 
 Manual workflows only become available after a separately approved merge to `main`.
@@ -202,6 +203,15 @@ Run the additional exact checks in [authorization-review.md](authorization-revie
 for effective IAM, ancestors, deny/PAB policies, org constraints, VPC Service
 Controls, quotas, GitHub protection and WIF readiness. Those checks do not enable
 APIs or repair permissions. Missing access or policy visibility remains blocking.
+The recommended single entrypoint is now:
+
+```bash
+python3 deploy/oidc/authorization_preflight.py check
+```
+
+It collects all nine review categories, classifies every check, redacts private
+inventories and never retries or fixes failures. It reuses the recorded source
+success and existing immutable image; no build or archive comparison is repeated.
 
 **Only after new explicit owner approval**, the proposed authorization command is:
 

@@ -1,12 +1,14 @@
 # Approval choices for a sole repository owner
 
-**Disabled draft. No GitHub environment settings were changed.** Independent review
-remains the configuration default. Solo-owner support is prepared but requires a
-separate reviewed authorization flag; deployment/execution remain disabled.
+**Design approved; live activation disabled. No GitHub settings were changed.**
+The owner explicitly approved the solo-owner policy as a design choice only and
+accepted its lack of independent review. Configuration now records `solo-owner`
+and its design authorization, while deployment/execution remain disabled.
 
-The current design requires a reviewer other than the person dispatching each
-workflow. With `prevent_self_review: true`, the sole owner cannot dispatch and then
-approve that same run. GitHub required reviewers need at least read access, and
+The previous independent mode required a reviewer other than the dispatcher. With
+`prevent_self_review: true`, the sole owner cannot approve their own dispatch.
+That mode remains supported but is no longer the selected design.
+GitHub required reviewers need at least read access, and
 one listed reviewer approval is sufficient; multiple listed reviewers do not
 establish an all-reviewers quorum. Separate `gcp-deploy` and `gcp-execute`
 environments still gate the two operations independently.
@@ -26,10 +28,9 @@ bypass is not a substitute for the chosen approval process.
 
 ## Prepared implementation, not authorization
 
-`config.json` currently keeps `approval_mode: independent`,
-`solo_owner_approval_authorized: false`, `enabled: false` and both bypass
-attestations `false`. New code cannot accept self-review under these defaults.
-The following is a **future reviewed policy choice**, not an instruction to apply:
+`config.json` now records the owner's approved design below, with both bypass
+attestations still `false`. This authorization is for the design, not live settings,
+IAM, a merge, deployment or execution:
 
 ```json
 {
@@ -39,7 +40,7 @@ The following is a **future reviewed policy choice**, not an instruction to appl
 }
 ```
 
-Even after approving that code/config choice, live settings and activation remain
+After this approved code/config choice, live settings and activation remain
 separate approvals. Each environment must have exactly one required User reviewer
 with numeric ID `341606319`, `prevent_self_review: false`, administrator bypass
 disabled and exactly one selected branch rule `main`. The independent mode still
@@ -64,9 +65,9 @@ visibility, plan and integration support. The repository was observed as public;
 actual environment settings/features remain unverified because the GitHub connector
 does not expose that endpoint. Verify availability before selecting a design.
 
-No choice is activated by this PR update. Both bypass attestations remain `false`,
-and `enabled` remains `false`. Select and explicitly approve a policy before any
-future code/settings change; setup/merge, deployment and execution remain separate.
+No live policy is activated by this PR update. Both bypass attestations remain
+`false`, and `enabled` remains `false`. The next step is the read-only preflight;
+future live settings, setup/merge, deployment and execution need separate approval.
 
 Sources reviewed: GitHub's [environment protection reference](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
 and [deployment review procedure](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/review-deployments).

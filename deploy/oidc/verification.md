@@ -28,7 +28,7 @@ python3 -m ruff format --check src tests deploy/oidc
 python3 -m pip check
 ```
 
-- **108 OIDC/source/review tests passed.** Fakes/mocks cover separate trust pools, exact numeric
+- **137 OIDC/source/review tests passed.** Fakes/mocks cover separate trust pools, exact numeric
   IDs/main/manual event/workflow/environment/audiences, least-privilege grants,
   additive idempotent setup, disabled configuration, existing-resource drift,
   cancelled-build rejection, Build/registry digest equality, approval rules,
@@ -41,8 +41,19 @@ python3 -m pip check
   not copies of the live consumed source. No extraction or activation is performed.
 - New regressions cover disabled-by-default solo policy, exact owner reviewer,
   protected/current main, owner-only initial dispatch, disabled read-only bootstrap,
-  GET/testIamPermissions-only review requests, distinct permission/API/missing errors
-  and complete pagination. Prepared solo-owner support is not enabled or approved.
+  GET and fixed read-only IAM-query RPCs, distinct permission/API/missing errors
+  and complete pagination. Prepared solo-owner support remains inactive; design
+  approval does not authorize live operations.
+- The owner has now explicitly approved the solo-owner **design only**. Configuration
+  selects that mode with its design authorization true; `enabled` and both bypass
+  attestations remain false. No live settings were changed.
+- **28 collector integration tests** exercise all nine categories with synthetic
+  private-policy fixtures, expected missing versus denied/disabled access, locally
+  unset versus unsupported constraints, redaction, incomplete ancestry, VPC/quotas,
+  GitHub gates, credential failure stop, request caching/no retry and forbidden
+  commands. One additional reader regression verifies fixed getIamPolicy read
+  payloads, and the CLI summary/invalid-local-evidence paths are covered. No real
+  GCP preflight was run by Codex.
 - Ruff **0.17.3** lint and formatting passed over `src`, `tests`, `deploy/oidc`.
 - Existing Python **3.12.14** environment dependency consistency passed. New
   deployment tools import only standard-library and sibling modules; they install
@@ -84,13 +95,14 @@ recorded with its limitations. Codex did not inspect the live bytes and does not
 claim independent signed provenance. Source comparison is complete on that evidence
 basis; deployment and execution remain disabled.
 
-Independent approval remains the default, with solo-owner authorization false.
+Solo-owner approval is the explicitly approved design, with its authorization true.
 `approval-options.md` recommends explicitly authorized self-approval for this
 personal project while retaining separate exact-owner reviewer gates. Support is
-prepared but inactive; no live protection setting was changed. The new
-`authorization-review.md` provides exact read-only checks and stop conditions.
+prepared but inactive because deployment and bypass gates remain false; no live
+protection setting was changed. `authorization-review.md` provides the single
+automated command plus exact private manual checks and stop conditions.
 
-Before activation, the owner must review that image, the source provenance,
+Before activation, retain the completed image/source verification and review
 GitHub environment features/reviewers/main-only rules/disabled bypass, effective
 permissions (including inherited/group/deny/PAB policies), organization restrictions,
 existing runtime/registry access and the Cloud Run service agent. Direct policy

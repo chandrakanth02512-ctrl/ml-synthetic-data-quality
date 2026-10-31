@@ -1,4 +1,4 @@
-"""Owner Cloud Shell review: GET and read-only testIamPermissions only.
+"""Owner Cloud Shell review: GET and read-only IAM query RPCs only.
 
 No keys, impersonation, configuration changes, API enablement or workload calls.
 Tokens stay in memory. No I/O on import; all live operations require the CLI.
@@ -22,6 +22,8 @@ VERSIONS = {
     "artifactregistry.googleapis.com": ("/v1/",),
     "run.googleapis.com": ("/v2/",),
     "accesscontextmanager.googleapis.com": ("/v1/",),
+    "storage.googleapis.com": ("/storage/v1/",),
+    "cloudbilling.googleapis.com": ("/v1/",),
 }
 TEST_HOSTS = {
     "iam.googleapis.com",
@@ -29,6 +31,19 @@ TEST_HOSTS = {
     "artifactregistry.googleapis.com",
     "run.googleapis.com",
 }
+
+
+class ReadFailure(RuntimeError):
+    """Sanitized API failure metadata; no private response/credential contents."""
+
+    def __init__(self, code, status, reasons=()):
+        self.code = code
+        self.status = status
+        self.reasons = tuple(reasons)
+        super().__init__(
+            f"READ BLOCKED: HTTP {code} / {status} / {list(reasons)}. "
+            "Do not infer absence from denied/disabled access; no changes made."
+        )
 
 
 def validate_request(method, url, permissions):
@@ -46,12 +61,25 @@ def validate_request(method, url, permissions):
         if permissions or (
             ":" in parsed.path
             and not (
-                parsed.netloc == "orgpolicy.googleapis.com"
-                and parsed.path.endswith(":getEffectivePolicy")
+                (
+                    parsed.netloc == "orgpolicy.googleapis.com"
+                    and parsed.path.endswith(":getEffectivePolicy")
+                )
+                or (
+                    parsed.netloc in {"artifactregistry.googleapis.com", "run.googleapis.com"}
+                    and parsed.path.endswith(":getIamPolicy")
+                )
             )
         ):
             raise RuntimeError("GET accepts only resource reads, not action endpoints")
     elif method == "POST":
+        if (
+            parsed.netloc in {"iam.googleapis.com", "cloudresourcemanager.googleapis.com"}
+            and parsed.path.endswith(":getIamPolicy")
+            and not parsed.query
+            and permissions is None
+        ):
+            return
         if (
             parsed.netloc not in TEST_HOSTS
             or not parsed.path.endswith(":testIamPermissions")
@@ -64,10 +92,17 @@ def validate_request(method, url, permissions):
         raise RuntimeError("Mutation methods are forbidden")
 
 
-def request(method, url, permissions=None):
+def request(method, url, permissions=None, *, token=None):
     validate_request(method, url, permissions)
-    token = gc("auth", "print-access-token")
-    body = None if method == "GET" else json.dumps({"permissions": permissions}).encode()
+    token = gc("auth", "print-access-token") if token is None else token
+    if not token or any(c.isspace() for c in token):
+        raise RuntimeError("Short-lived read credential unavailable; no retry")
+    payload = (
+        {"options": {"requestedPolicyVersion": 3}}
+        if url.endswith(":getIamPolicy")
+        else {"permissions": permissions}
+    )
+    body = None if method == "GET" else json.dumps(payload).encode()
     req = urllib.request.Request(
         url,
         data=body,
@@ -92,10 +127,7 @@ def request(method, url, permissions=None):
                 if isinstance(x, dict) and x.get("reason")
             }
         )
-        raise RuntimeError(
-            f"READ BLOCKED: HTTP {error.code} / {detail.get('status', 'UNKNOWN')} / {reasons}. "
-            "Do not infer absence from denied/disabled access; no changes made."
-        ) from None
+        raise ReadFailure(error.code, detail.get("status", "UNKNOWN"), reasons) from None
     except (urllib.error.URLError, TimeoutError, OSError, ValueError):
         raise RuntimeError("Read transport/response failure; outcome not verified") from None
     if not isinstance(result, dict):
@@ -124,12 +156,16 @@ def read_pages(url, field):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("get", "test"))
+    parser.add_argument("operation", choices=("get", "test", "policy"))
     parser.add_argument("url")
     parser.add_argument("--permissions", nargs="+")
     parser.add_argument("--pages", help="List field whose nextPageToken must be fully traversed")
     args = parser.parse_args()
     method = "GET" if args.operation == "get" else "POST"
+    if args.operation == "policy" and not args.url.endswith(":getIamPolicy"):
+        raise RuntimeError("Policy queries require the getIamPolicy read endpoint")
+    if args.operation == "test" and not args.url.endswith(":testIamPermissions"):
+        raise RuntimeError("Permission queries require the testIamPermissions read endpoint")
     validate_request(method, args.url, args.permissions)
     if args.pages and method != "GET":
         raise RuntimeError("Pagination is restricted to GET")

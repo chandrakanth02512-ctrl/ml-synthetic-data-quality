@@ -1,8 +1,9 @@
 # Read-only authorization review before any live setup
 
 **No authorization to change resources/settings.** Run these reads only in already
-authenticated Cloud Shell. Codex currently has no GCP identity/API egress. Keep all
-activation/solo-owner approval/bypass flags false. Do not enable an API, log in as
+authenticated Cloud Shell. Codex currently has no GCP identity/API egress. The
+solo-owner design is now approved in configuration; keep `enabled` and both bypass
+attestations false. Do not enable an API, log in as
 another identity, impersonate an account, grant roles or change a perimeter to make
 a check pass. Keep raw organization/IAM outputs private and outside this repository.
 
@@ -10,6 +11,61 @@ Every section uses explicit project coordinates. Ancestor/policy IDs below must
 come from the successful inventory, not guesses. `--quiet` suppresses interactive
 API-enablement prompts. A failed check blocks the affected capability; it does not
 prove a missing resource or authorize a workaround.
+
+## One automated procedure — run this first
+
+From a fresh checkout of this PR's exact reviewed commit in Google Cloud Shell:
+
+```bash
+python3 deploy/oidc/authorization_preflight.py check
+```
+
+The collector uses existing `gcloud` human authentication and existing `gh`
+authentication, if available. It does not initiate login, impersonation, API
+enablement, repairs or workloads. It verifies the active local GCP project before
+any cloud read; select the intended Cloud Shell account/project yourself before
+running it. A mismatch is reported, never corrected. Missing GitHub authentication
+blocks that category while independent GCP checks continue. A GCP authentication
+failure stops further cloud probes. No token is printed, put in process arguments,
+downloaded or stored by the collector. Normal existing CLI credential handling is
+not replaced or inspected for secret contents.
+
+It gathers all nine categories below automatically using read-only REST calls.
+Resource requests have no retry loop and cache successes/failures; the same failed
+request is not reissued for another check. POSTs are restricted to the read-only
+`testIamPermissions` and `getIamPolicy` RPCs, with fixed query payloads; all other
+remote operations are GET. `gcloud` is used only for local configuration/identity
+inspection and one captured access-token request. `gh api` is GET-only. Completed
+source/build verification is not repeated: only the recorded owner-run evidence is
+checked for consistency. Artifact Registry receives an immutable metadata read,
+not a Docker download, build or new tag selection.
+
+The console output is a JSON **summary**, with every check classified exactly:
+
+| Status | Meaning |
+|---|---|
+| PASS | The stated read/check succeeded; this never grants deployment approval. |
+| EXPECTED MISSING | A structured not-found for a planned future resource, or a supported locally unset policy. Effective/default policy is still inspected. |
+| BLOCKED | Authentication, permission/API availability, configuration mismatch or incompatible controls prevent verification/progress. |
+| UNVERIFIED | Missing visibility, unsupported constraint, conditional policy, network context, quota headroom or another fact that safe reads cannot establish automatically. |
+
+Reasons distinguish API disabled, permission denied, supported policy locally
+unset and unsupported/not-applicable constraint. Category status is the most
+restrictive contained result. No raw IAM/org/deny/PAB/VPC/quotas inventories, private
+principals, rule expressions, credential output or CLI stderr are printed or
+written to files. Administrator identifiers are retained only in process memory.
+Share the summary for review; do not commit raw inventories or private exports.
+
+Exit **0** means collection has only PASS/EXPECTED MISSING, **1** includes
+UNVERIFIED, and **2** includes BLOCKED/local prerequisite failure. None authorizes
+live changes. These are deliberate report outcomes, not a request to rerun until
+green. Partial visibility remains explicit: project Owner does not automatically
+grant ancestor/deny/PAB/VPC visibility; conditional restrictions need administrator
+evaluation; quota limits do not establish current usage/headroom; protected-main
+flags do not prove all bypass rules; an API may omit administrator-bypass state.
+The collector never attests an omitted setting and does not perform a live WIF
+exchange. The detailed commands below remain private manual fallbacks for an
+authorized administrator to resolve precisely those limitations.
 
 ## 1. Active human, billing, APIs, ancestry and existing resources
 
@@ -50,7 +106,9 @@ Missing IAM Credentials/STS is a pending separately approved setup addition.
 
 ## 2. Effective permissions and scoped allow policies
 
-`review_read.py` permits GET and read-only `:testIamPermissions` POST only. It uses
+`review_read.py` permits GET and read-only `:testIamPermissions`/`:getIamPolicy`
+POSTs only. Permission-query bodies and version-3 policy-read bodies are fixed;
+no policy write payload is accepted. It uses
 the current human's short-lived token in memory, rejects auth overrides through
 the existing owner preflight, never writes credentials, and never enables APIs.
 The POSTs below are permission queries, not IAM changes. Describe a resource before
@@ -329,9 +387,11 @@ separate setup concerns.
 Record PASS / EXPECTED MISSING / BLOCKED / UNVERIFIED for every category, with
 permission/API/constraint errors kept distinct. No category is globally approved
 from a partial direct IAM check. Send only a redacted summary for Codex review.
-The next design approval is the proposed solo-owner policy, while `enabled` and
-bypass flags remain false. Live GitHub environment/protected-main changes and GCP
-authorization additions still require explicitly scoped approval. Deployment and
+The solo-owner design approval has been received and recorded; `enabled` and
+bypass flags remain false. After reviewing the summary, the next live approval
+would explicitly authorize the exact GitHub environment/protected-main changes
+identified by the report. GCP authorization additions still require explicitly
+scoped approval. Deployment and
 execution retain separate manual/environment approvals after readiness is complete.
 
 Official syntax and limits reviewed: [deny inventory](https://docs.cloud.google.com/sdk/gcloud/reference/iam/policies/list),
