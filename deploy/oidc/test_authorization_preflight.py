@@ -501,6 +501,8 @@ class PreflightTests(unittest.TestCase):
                 reader.github("user")
         self.assertNotIn(self.cloud.private, str(captured.exception))
         self.assertEqual(command.call_args.args[0][:4], ["gh", "api", "--method", "GET"])
+        args = command.call_args.args[0]
+        self.assertEqual(args[args.index("--hostname") + 1], "github.com")
 
     def test_cli_adapter_cannot_login_modify_or_run_workloads(self):
         reader = pre.CloudReader()

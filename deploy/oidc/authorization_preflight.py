@@ -210,6 +210,8 @@ class CloudReader:
                         "--method",
                         "GET",
                         path,
+                        "--hostname",
+                        "github.com",
                         "-H",
                         "X-GitHub-Api-Version: 2026-03-10",
                     ],
