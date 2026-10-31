@@ -93,6 +93,19 @@ def test_feature_workflow_cannot_authenticate_deploy_or_execute():
     assert "pytest -c tests_lakehouse/pytest.ini" in text
 
 
+def test_git_inventory_excludes_caches_credentials_and_generated_artifacts():
+    tracked = (
+        subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True)
+        .stdout.decode()
+        .split("\0")
+    )
+    forbidden = {".pytest_cache", ".ruff_cache", "__pycache__", ".venv", ".secrets"}
+    for name in filter(None, tracked):
+        path = Path(name)
+        assert not forbidden.intersection(path.parts), name
+        assert path.suffix not in {".zip", ".pyc", ".pem", ".key", ".joblib"}, name
+
+
 def test_staging_replay_is_create_only_and_input_conflict_stops(tmp_path, objects):
     fixture = tmp_path / "source.ndjson"
     tool("generate_lakehouse_source").generate(fixture, rows=4)

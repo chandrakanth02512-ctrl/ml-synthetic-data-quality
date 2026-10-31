@@ -6,7 +6,7 @@ resource/IAM/protection change, build, batch or workload execution was performed
 
 | Check | Observed result |
 |---|---|
-| Feature suite, actual local Spark + offline SDK boundaries | **61 passed** |
+| Feature suite, actual local Spark + offline SDK boundaries | **62 passed** |
 | Original application regression suite | **164 passed; 95.88% coverage** |
 | Existing application files | **46 original Git blob hashes unchanged** |
 | Spark pilot fixture | **256 source, 252 clean, 4 quarantined, 12 quality rows, 256 ledger rows** |
