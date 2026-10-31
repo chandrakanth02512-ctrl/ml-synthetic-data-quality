@@ -15,7 +15,7 @@ environments still gate the two operations independently.
 
 | Choice | Protection and tradeoff | Change needed before use |
 |---|---|---|
-| Explicit single-owner approval (recommended for this personal project) | Existing owner dispatches and separately approves each environment. Retains a deliberate second confirmation, but supplies no independent person and cannot protect against compromise of that owner account. | Separately approve the prepared `solo-owner` mode and future environment settings. Keep only the exact owner as required reviewer, disabled administrator bypass, protected main, exact-main restrictions and separate dispatches. No second account is required. |
+| Explicit single-owner approval (selected design for this personal project) | Existing owner dispatches and separately approves each environment. Retains a deliberate second confirmation, but supplies no independent person and cannot protect against compromise of that owner account. | Design approval is recorded; live settings still require separate approval. Keep only the exact owner as required reviewer, disabled administrator bypass, protected main, exact-main restrictions and separate dispatches. No second account is required. |
 | Add a distinct trusted reviewer | Stronger independent review. A second repository owner is unnecessary; use the minimum reviewer access the repository supports. | Owner selects an eligible reviewer and configures both environments. No weakening of `prevent_self_review`. |
 | Independently managed external approval | A custom environment protection rule can consult an external approval system. Useful when that system supplies real independent authorization. Requires support, trusted integration, availability and possible cost review. | Separate design and owner approval; review any credential needs against the no-long-lived-credential requirement. Current guard still requires native non-self reviewers and does not implement this alternative. |
 | Keep automation disabled | Continue review and future explicitly approved keyless Cloud Shell operations while no independent reviewer or revised policy is selected. | No approval-policy change now. Any later cloud operation still needs its own approval. |
@@ -63,7 +63,7 @@ not independent review. No branch protection or environment setting was changed.
 Required-reviewer, environment and custom-protection features depend on repository
 visibility, plan and integration support. The repository was observed as public;
 actual environment settings/features remain unverified because the GitHub connector
-does not expose that endpoint. Verify availability before selecting a design.
+does not expose that endpoint. Verify availability before activating the design.
 
 No live policy is activated by this PR update. Both bypass attestations remain
 `false`, and `enabled` remains `false`. The next step is the read-only preflight;

@@ -55,6 +55,7 @@ IAM = "https://iam.googleapis.com"
 ORG = f"https://orgpolicy.googleapis.com/v2/projects/{PROJECT_NUMBER}"
 AR = f"https://artifactregistry.googleapis.com/v1/projects/{PROJECT}/locations/{REGION}"
 RUN = f"https://run.googleapis.com/v2/projects/{PROJECT}/locations/{REGION}/jobs/{JOB}"
+RUN_LOCATIONS = f"https://run.googleapis.com/v1/projects/{PROJECT_NUMBER}/locations"
 BASE_APIS = bootstrap.REQUIRED_APIS | {"storage.googleapis.com", "logging.googleapis.com"}
 INSPECTION_APIS = {"orgpolicy.googleapis.com", "accesscontextmanager.googleapis.com"}
 POLICY_TARGETS = {
@@ -327,13 +328,31 @@ class Preflight:
                     }
                     else "UNVERIFIED"
                 )
-                reason = "SERVICE_DISABLED" if "SERVICE_DISABLED" in error.reasons else error.status
+                if error.status == "LOCATION_ENDPOINT_UNVERIFIED":
+                    status = "UNVERIFIED"
+                public_reasons = (
+                    "SERVICE_DISABLED",
+                    "USER_PROJECT_DENIED",
+                    "BILLING_DISABLED",
+                    "SECURITY_POLICY_VIOLATED",
+                    "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+                    "IAM_PERMISSION_DENIED",
+                )
+                reason = next((r for r in public_reasons if r in error.reasons), error.status)
                 safe = (
                     reason
                     if reason
                     in {
                         "SERVICE_DISABLED",
                         "PERMISSION_DENIED",
+                        "UNKNOWN",
+                        "UNIMPLEMENTED",
+                        "USER_PROJECT_DENIED",
+                        "BILLING_DISABLED",
+                        "SECURITY_POLICY_VIOLATED",
+                        "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+                        "IAM_PERMISSION_DENIED",
+                        "LOCATION_ENDPOINT_UNVERIFIED",
                         "NOT_FOUND",
                         "UNAUTHENTICATED",
                         "INVALID_ARGUMENT",
@@ -359,6 +378,27 @@ class Preflight:
                     status,
                     f"Read failed: HTTP {error.code}; {safe}; private details omitted",
                 )
+                diagnostic = getattr(error, "diagnostic", {})
+                if diagnostic:
+                    self.results[-1]["diagnostic"] = {
+                        key: value
+                        for key, value in diagnostic.items()
+                        if (key == "quota_project" and value == PROJECT)
+                        or (
+                            key == "error_consumer"
+                            and value
+                            in {"TARGET_PROJECT", "OTHER_PROJECT_REDACTED", "NOT_REPORTED"}
+                        )
+                        or (key == "affected_service" and value in review_read.VERSIONS)
+                    }
+                if (
+                    reason == "SERVICE_DISABLED"
+                    and diagnostic.get("affected_service") in self.enabled
+                ):
+                    self.results[-1]["detail"] += (
+                        "; conflicts with enabled inventory: inspect quota consumer, dependency "
+                        "and propagation; do not re-enable automatically"
+                    )
             if error.code == 401:
                 if category == "github":
                     self.github_auth_failed = True
@@ -628,6 +668,7 @@ class Preflight:
                 "iam.workloadIdentityPools.create",
                 "iam.workloadIdentityPoolProviders.create",
                 "serviceusage.services.enable",
+                "serviceusage.services.use",
                 "run.jobs.create",
                 "run.jobs.get",
             ],
@@ -966,11 +1007,21 @@ class Preflight:
 
     def apis_quotas(self):
         if self.need_api("apis_quotas", "run.googleapis.com"):
-            locations = self.inventory(
+
+            def location_read():
+                try:
+                    return self.reader.pages(RUN_LOCATIONS, "locations")
+                except review_read.ReadFailure as error:
+                    if error.code in {404, 405, 501}:
+                        raise ProbeFailure(
+                            code=error.code, status="LOCATION_ENDPOINT_UNVERIFIED"
+                        ) from None
+                    raise
+
+            locations = self.probe(
                 "apis_quotas",
                 "run_locations",
-                f"https://run.googleapis.com/v2/projects/{PROJECT}/locations",
-                "locations",
+                location_read,
             )
             if locations is not None:
                 supported = any(
@@ -982,6 +1033,13 @@ class Preflight:
                     "mumbai",
                     "PASS" if supported else "BLOCKED",
                     "Cloud Run location inventory checked; capacity not reserved",
+                )
+            else:
+                self.add(
+                    "apis_quotas",
+                    "mumbai",
+                    "UNVERIFIED",
+                    "Location discovery failed; no inference about Mumbai availability",
                 )
         for service in (
             "run.googleapis.com",
@@ -1465,6 +1523,7 @@ class Preflight:
             "project": PROJECT,
             "region": REGION,
             "read_only": True,
+            "request_quota_project": PROJECT,
             "live_changes_authorized": False,
             "deployment_enabled": self.config["enabled"],
             "policy_design": self.config["approval_mode"],

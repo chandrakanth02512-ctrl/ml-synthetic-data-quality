@@ -387,6 +387,81 @@ class PreflightTests(unittest.TestCase):
         report = self.run_report()
         self.assertEqual(self.checks(report, "quota.run.googleapis.com")[0]["status"], "UNVERIFIED")
 
+    def test_run_locations_uses_documented_v1_endpoint_and_numeric_project(self):
+        report = self.run_report()
+        self.assertIn(
+            (
+                "pages",
+                f"https://run.googleapis.com/v1/projects/{pre.PROJECT_NUMBER}/locations",
+                "locations",
+            ),
+            self.cloud.calls,
+        )
+        self.assertFalse(
+            any(
+                "run.googleapis.com/v2/projects/" in str(c) and str(c[1]).endswith("/locations")
+                for c in self.cloud.calls
+            )
+        )
+        self.assertEqual(self.checks(report, "mumbai")[0]["status"], "PASS")
+        self.assertEqual(report["request_quota_project"], pre.PROJECT)
+
+    def test_location_endpoint_failure_does_not_claim_mumbai_is_unavailable(self):
+        for code in (404, 405, 501):
+            with self.subTest(code=code):
+                self.cloud.failures[pre.RUN_LOCATIONS] = review_read.ReadFailure(code, "UNKNOWN")
+                report = self.run_report()
+                row = self.checks(report, "run_locations")[0]
+                self.assertEqual(row["status"], "UNVERIFIED")
+                self.assertIn(f"HTTP {code}; LOCATION_ENDPOINT_UNVERIFIED", row["detail"])
+                self.assertEqual(self.checks(report, "mumbai")[0]["status"], "UNVERIFIED")
+
+    def test_location_permission_failure_remains_blocked(self):
+        self.cloud.failures[pre.RUN_LOCATIONS] = review_read.ReadFailure(403, "PERMISSION_DENIED")
+        report = self.run_report()
+        self.assertEqual(self.checks(report, "run_locations")[0]["status"], "BLOCKED")
+        self.assertEqual(self.checks(report, "mumbai")[0]["status"], "UNVERIFIED")
+
+    def test_enabled_service_disabled_error_reports_conflict_without_reenable_or_private_data(self):
+        self.cloud.failures[pre.ORG + "/constraints"] = review_read.ReadFailure(
+            403,
+            "PERMISSION_DENIED",
+            ["SERVICE_DISABLED"],
+            {
+                "quota_project": pre.PROJECT,
+                "error_consumer": "OTHER_PROJECT_REDACTED",
+                "affected_service": "orgpolicy.googleapis.com",
+                "private_metadata": self.cloud.private,
+            },
+        )
+        report = self.run_report()
+        row = self.checks(report, "constraint_inventory")[0]
+        self.assertEqual(row["status"], "BLOCKED")
+        self.assertIn("conflicts with enabled inventory", row["detail"])
+        self.assertEqual(row["diagnostic"]["error_consumer"], "OTHER_PROJECT_REDACTED")
+        self.assertNotIn(self.cloud.private, json.dumps(report))
+        self.assertFalse(any(c[0] in {"PUT", "PATCH", "DELETE"} for c in self.cloud.calls))
+
+    def test_quota_user_and_vpc_denials_are_distinct_public_reasons(self):
+        for reason in ("USER_PROJECT_DENIED", "SECURITY_POLICY_VIOLATED", "IAM_PERMISSION_DENIED"):
+            self.cloud.failures[pre.ORG + "/constraints"] = review_read.ReadFailure(
+                403,
+                "PERMISSION_DENIED",
+                [reason],
+            )
+            row = self.checks(self.run_report(), "constraint_inventory")[0]
+            self.assertEqual(row["status"], "BLOCKED")
+            self.assertIn(reason, row["detail"])
+
+    def test_operator_quota_consumer_permission_is_explicitly_queried(self):
+        self.run_report()
+        query = next(
+            c
+            for c in self.cloud.calls
+            if c[0] == "POST" and c[1] == pre.CRM + f"/v1/projects/{pre.PROJECT}:testIamPermissions"
+        )
+        self.assertIn("serviceusage.services.use", query[2])
+
     def test_missing_future_environments_are_expected_without_creating_them(self):
         self.cloud.env_missing = True
         report = self.run_report()

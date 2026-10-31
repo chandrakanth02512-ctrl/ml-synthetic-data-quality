@@ -56,6 +56,80 @@ class ReviewReadTests(unittest.TestCase):
         req = factory.return_value.open.call_args.args[0]
         self.assertEqual(req.method, "POST")
         self.assertEqual(json.loads(req.data), {"permissions": ["iam.serviceAccounts.actAs"]})
+        self.assertEqual(req.get_header("X-goog-user-project"), read.PROJECT)
+
+    def test_get_uses_explicit_target_quota_project_without_changing_cli_config(self):
+        with patch("review_read.urllib.request.build_opener") as factory:
+            factory.return_value.open.return_value.__enter__.return_value.read.return_value = b"{}"
+            read.request(
+                "GET",
+                "https://orgpolicy.googleapis.com/v2/projects/984592102391/constraints",
+                token="fake-token",
+            )
+        req = factory.return_value.open.call_args.args[0]
+        self.assertEqual(req.method, "GET")
+        self.assertIsNone(req.data)
+        self.assertEqual(req.get_header("X-goog-user-project"), read.PROJECT)
+        factory.return_value.open.assert_called_once()
+
+    def test_error_consumer_diagnostics_redact_other_projects_and_private_metadata(self):
+        for consumer, expected in (
+            ("projects/" + read.PROJECT_NUMBER, "TARGET_PROJECT"),
+            ("projects/" + read.PROJECT, "TARGET_PROJECT"),
+            ("projects/private-client-project", "OTHER_PROJECT_REDACTED"),
+        ):
+            body = {
+                "error": {
+                    "status": "PERMISSION_DENIED",
+                    "message": "private-message",
+                    "details": [
+                        {
+                            "reason": "SERVICE_DISABLED",
+                            "metadata": {
+                                "consumer": consumer,
+                                "service": "orgpolicy.googleapis.com",
+                                "private": "private-metadata",
+                            },
+                        }
+                    ],
+                }
+            }
+            error = urllib.error.HTTPError(
+                "https://orgpolicy.googleapis.com",
+                403,
+                "error",
+                {},
+                io.BytesIO(json.dumps(body).encode()),
+            )
+            with patch("review_read.urllib.request.build_opener") as factory:
+                factory.return_value.open.side_effect = error
+                with self.assertRaises(read.ReadFailure) as captured:
+                    read.request(
+                        "GET",
+                        "https://orgpolicy.googleapis.com/v2/projects/p/constraints",
+                        token="fake-token",
+                    )
+            self.assertEqual(
+                captured.exception.diagnostic,
+                {
+                    "quota_project": read.PROJECT,
+                    "error_consumer": expected,
+                    "affected_service": "orgpolicy.googleapis.com",
+                },
+            )
+            self.assertNotIn("private-", json.dumps(captured.exception.diagnostic))
+            self.assertNotIn("private-", str(captured.exception))
+            factory.return_value.open.assert_called_once()
+
+    def test_missing_or_malformed_error_metadata_has_no_invented_consumer(self):
+        for details in (None, {}, [None, {"metadata": []}], [{"metadata": {"service": []}}]):
+            self.assertEqual(
+                read.quota_diagnostic(details),
+                {
+                    "quota_project": read.PROJECT,
+                    "error_consumer": "NOT_REPORTED",
+                },
+            )
 
     def test_denied_disabled_and_missing_are_not_silent_absence(self):
         for code, status, reason in (

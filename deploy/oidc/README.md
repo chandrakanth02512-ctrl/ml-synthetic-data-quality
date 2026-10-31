@@ -110,8 +110,10 @@ upload is used. Tokens never enter command arguments, step summaries or receipts
 
 Before authorization/activation, configure **both** GitHub repository environments:
 
-1. `gcp-deploy`: required reviewers for deployment; prevent self-review.
-2. `gcp-execute`: required reviewers for execution; prevent self-review.
+1. `gcp-deploy`: exactly the approved owner User reviewer for deployment; permit
+   self-review under the approved solo-owner design.
+2. `gcp-execute`: exactly the same approved owner User reviewer for execution;
+   permit self-review, with a separate approval for this operation.
 3. For each, use selected deployment branches with exactly one branch policy
    `main`, no tags/wildcards. "Protected branches only" is insufficient.
 4. Disable administrator bypass in both environment settings. Only after inspecting
@@ -123,9 +125,9 @@ Before authorization/activation, configure **both** GitHub repository environmen
 5. Protect `main` and require review of workflow/configuration changes. Do not allow
    the trusted branch's code/configuration to change without the intended governance.
 
-A different reviewer than the dispatcher is required. A solo owner cannot approve
-their own dispatch under these defaults; select another eligible reviewer or bring
-that policy choice back for explicit review. The package never silently weakens it.
+Independent mode still requires a reviewer other than the dispatcher. The selected
+solo-owner design permits the exact owner to dispatch and separately approve each
+operation. That design approval does not configure either live environment.
 Required-reviewer/environment features depend on the repository's GitHub plan;
 missing/inaccessible rules block authentication. No environment is automatically
 created or made permissive by setup.
@@ -212,6 +214,9 @@ python3 deploy/oidc/authorization_preflight.py check
 It collects all nine review categories, classifies every check, redacts private
 inventories and never retries or fixes failures. It reuses the recorded source
 success and existing immutable image; no build or archive comparison is repeated.
+See [readiness-assessment.md](readiness-assessment.md) for the owner-run results,
+corrected location/quota diagnostics, the confirmed unprotected-main blocker,
+existing-identity GitHub UI checks and narrowly scoped administrator review.
 
 **Only after new explicit owner approval**, the proposed authorization command is:
 

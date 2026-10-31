@@ -12,6 +12,11 @@ come from the successful inventory, not guesses. `--quiet` suppresses interactiv
 API-enablement prompts. A failed check blocks the affected capability; it does not
 prove a missing resource or authorize a workaround.
 
+The owner-run preflight findings, confirmed method correction, quota-attribution
+diagnosis, GitHub read evidence and administrator-only permission scopes are in
+[readiness-assessment.md](readiness-assessment.md). That assessment distinguishes
+confirmed gaps from inspection limitations and gives the fresh-checkout procedure.
+
 ## One automated procedure — run this first
 
 From a fresh checkout of this PR's exact reviewed commit in Google Cloud Shell:
@@ -39,6 +44,14 @@ inspection and one captured access-token request. `gh api` is GET-only. Complete
 source/build verification is not repeated: only the recorded owner-run evidence is
 checked for consistency. Artifact Registry receives an immutable metadata read,
 not a Docker download, build or new tag selection.
+
+Every GCP REST request explicitly sends `X-Goog-User-Project:
+gcp-intelligent-data-quality`. The current caller must have
+`serviceusage.services.use` on that project, now included in the permission query.
+This is request attribution, not a gcloud/ADC/billing configuration change. Redacted
+API errors identify the allowlisted service and whether the consumer is the target,
+another project (ID omitted), or unreported. `SERVICE_DISABLED` conflicting with
+enabled inventory remains BLOCKED for diagnosis; it never triggers API enablement.
 
 The console output is a JSON **summary**, with every check classified exactly:
 
@@ -128,7 +141,7 @@ python3 deploy/oidc/review_read.py test \
   --permissions resourcemanager.projects.get resourcemanager.projects.getIamPolicy \
   resourcemanager.projects.setIamPolicy iam.roles.create iam.serviceAccounts.create \
   iam.workloadIdentityPools.create iam.workloadIdentityPoolProviders.create \
-  serviceusage.services.enable run.jobs.get run.jobs.create
+  serviceusage.services.use serviceusage.services.enable run.jobs.get run.jobs.create
 
 python3 deploy/oidc/review_read.py test \
   'https://iam.googleapis.com/v1/projects/gcp-intelligent-data-quality/serviceAccounts/synthetic-quality-runtime@gcp-intelligent-data-quality.iam.gserviceaccount.com:testIamPermissions' \
@@ -267,6 +280,12 @@ transport/invalid response → **UNVERIFIED**. NOT_FOUND alone does not distingu
 unsupported constraint, absent policy or wrong resource. Expected local absence
 must not abort an unexplained shell loop; run each read and record its status.
 
+The v2 constraints-list URL is supported. The old collector did not explicitly set
+the quota consumer, so `SERVICE_DISABLED` did not necessarily refer to this target
+project. The previous error metadata is insufficient to prove the original cause.
+Use the corrected summary's consumer relationship; do not automatically enable an
+API that already appears enabled, or silently switch to another quota project.
+
 Require Mumbai resource placement and the global WIF pools/issuer
 `https://token.actions.githubusercontent.com` plus external principalSet members to
 be compatible with all effective restrictions. Missing ancestor visibility stops.
@@ -300,6 +319,8 @@ confirm applicability; do not infer it from permission failures.
 ```bash
 gcloud run regions list --project=gcp-intelligent-data-quality --format=json --quiet
 python3 deploy/oidc/review_read.py get \
+  'https://run.googleapis.com/v1/projects/984592102391/locations' --pages=locations
+python3 deploy/oidc/review_read.py get \
   'https://serviceusage.googleapis.com/v1beta1/projects/984592102391/services/run.googleapis.com/consumerQuotaMetrics?view=FULL' \
   --pages=metrics
 python3 deploy/oidc/review_read.py get \
@@ -321,6 +342,11 @@ limits and token request quotas. Disabled/not-yet-used APIs may have unavailable
 quota data; mark pending and recheck after approved setup. Service location support
 and quota headroom do not reserve capacity. No Cloud Build quota increase is needed
 or requested: the existing immutable image is reused and no build is submitted.
+
+The corrected collector uses the documented **v1** locations list with the verified
+numeric project; job metadata still uses v2. The previous v2 locations-list request
+was incorrect. A location endpoint 404/405/501 is UNVERIFIED, not Mumbai unsupported;
+a 403 is BLOCKED. Regional support, quota usage and actual capacity are separate.
 
 ## 7. GitHub environments and protected main
 
@@ -345,14 +371,19 @@ PR-before-merge with CI and zero mandatory peer approvals, then explicitly revie
 and merge their own PR; requiring another person's review would recreate the same
 deadlock. This is a proposed owner-governance choice, not a live settings change.
 
-Current default: non-self reviewer in each environment. Proposed solo-owner mode,
-only after separate approval: exactly one User reviewer ID `341606319` in each,
+The approved but inactive solo-owner design requires exactly one User reviewer
+ID `341606319` in each environment,
 `prevent_self_review: false`, administrator bypass disabled, exactly one branch
 policy `main` of type `branch`, no tag/wildcard policy. Owner must attest disabled
 bypass if the API omits it. Missing/unavailable protection features block activation.
 Runtime solo checks also require protected main's current commit to equal the
 dispatched SHA; moved main stops before GCP auth. Full branch-rule governance still
 needs this owner review; a boolean protected field does not prove every setting.
+
+The authorized GitHub integration currently reports main `protected: false`.
+Detailed settings reads are unavailable through that integration. If existing
+`gh` authentication is absent, use the exact read-only owner UI checklist in
+`readiness-assessment.md`; do not create credentials. No protection was changed.
 
 ## 8. WIF readiness, with no token exchange or setup
 

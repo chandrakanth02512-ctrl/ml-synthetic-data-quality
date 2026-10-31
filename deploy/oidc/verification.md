@@ -28,7 +28,7 @@ python3 -m ruff format --check src tests deploy/oidc
 python3 -m pip check
 ```
 
-- **137 OIDC/source/review tests passed.** Fakes/mocks cover separate trust pools, exact numeric
+- **146 OIDC/source/review tests passed.** Fakes/mocks cover separate trust pools, exact numeric
   IDs/main/manual event/workflow/environment/audiences, least-privilege grants,
   additive idempotent setup, disabled configuration, existing-resource drift,
   cancelled-build rejection, Build/registry digest equality, approval rules,
@@ -47,13 +47,18 @@ python3 -m pip check
 - The owner has now explicitly approved the solo-owner **design only**. Configuration
   selects that mode with its design authorization true; `enabled` and both bypass
   attestations remain false. No live settings were changed.
-- **28 collector integration tests** exercise all nine categories with synthetic
+- **34 collector integration tests** exercise all nine categories with synthetic
   private-policy fixtures, expected missing versus denied/disabled access, locally
   unset versus unsupported constraints, redaction, incomplete ancestry, VPC/quotas,
   GitHub gates, credential failure stop, request caching/no retry and forbidden
   commands. One additional reader regression verifies fixed getIamPolicy read
   payloads, and the CLI summary/invalid-local-evidence paths are covered. No real
   GCP preflight was run by Codex.
+- Nine new regressions verify the documented v1 numeric-project locations read,
+  method failures versus permissions/availability, explicit per-request quota
+  attribution, operator `serviceusage.services.use`, redacted ErrorInfo consumer
+  relationships, contradictory enabled/SERVICE_DISABLED evidence and distinct
+  quota-user/IAM/security-policy denials. No new writes, retries or API enablement.
 - Ruff **0.17.3** lint and formatting passed over `src`, `tests`, `deploy/oidc`.
 - Existing Python **3.12.14** environment dependency consistency passed. New
   deployment tools import only standard-library and sibling modules; they install
@@ -113,3 +118,14 @@ No live token exchange, IAM propagation, GitHub approval cycle, quotas, job
 reconciliation, execution success or actual spend is established by offline tests.
 If the job is absent, initial owner authorization deliberately defers the exact-job
 execution binding until a separately approved deployment creates it.
+
+## Owner preflight follow-up
+
+The owner supplied the previous collector summary: 41 PASS / 7 BLOCKED /
+18 EXPECTED MISSING / 9 UNVERIFIED. Those are historical counts, not new live
+results. [readiness-assessment.md](readiness-assessment.md) classifies each unresolved
+finding and required evidence. The authorized GitHub integration now independently
+reports main unprotected, while detailed settings remain inaccessible. No settings
+were changed. Corrected GCP reads still require the existing authenticated Cloud
+Shell; no independent GCP conclusions are claimed. The approved solo-owner design
+remains inactive with `enabled` and both bypass attestations false.

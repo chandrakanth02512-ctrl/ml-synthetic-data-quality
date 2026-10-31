@@ -13,6 +13,7 @@ import urllib.request
 
 from bootstrap import gc, owner_context
 from job_control import NoRedirect
+from settings import PROJECT, PROJECT_NUMBER
 
 VERSIONS = {
     "iam.googleapis.com": ("/v1/", "/v2/", "/v3/"),
@@ -20,7 +21,7 @@ VERSIONS = {
     "orgpolicy.googleapis.com": ("/v2/",),
     "serviceusage.googleapis.com": ("/v1/", "/v1beta1/"),
     "artifactregistry.googleapis.com": ("/v1/",),
-    "run.googleapis.com": ("/v2/",),
+    "run.googleapis.com": ("/v1/", "/v2/"),
     "accesscontextmanager.googleapis.com": ("/v1/",),
     "storage.googleapis.com": ("/storage/v1/",),
     "cloudbilling.googleapis.com": ("/v1/",),
@@ -36,14 +37,41 @@ TEST_HOSTS = {
 class ReadFailure(RuntimeError):
     """Sanitized API failure metadata; no private response/credential contents."""
 
-    def __init__(self, code, status, reasons=()):
+    def __init__(self, code, status, reasons=(), diagnostic=None):
         self.code = code
         self.status = status
         self.reasons = tuple(reasons)
+        self.diagnostic = dict(diagnostic or {})
         super().__init__(
             f"READ BLOCKED: HTTP {code} / {status} / {list(reasons)}. "
             "Do not infer absence from denied/disabled access; no changes made."
         )
+
+
+def quota_diagnostic(details):
+    """Preserve useful ErrorInfo context without another project's ID or raw metadata."""
+    result = {"quota_project": PROJECT, "error_consumer": "NOT_REPORTED"}
+    for item in details if isinstance(details, list) else []:
+        if not isinstance(item, dict):
+            continue
+        metadata = item.get("metadata", {})
+        if not isinstance(metadata, dict):
+            continue
+        consumer = metadata.get("consumer")
+        if isinstance(consumer, str):
+            result["error_consumer"] = (
+                "TARGET_PROJECT"
+                if consumer
+                in {
+                    "projects/" + PROJECT,
+                    "projects/" + PROJECT_NUMBER,
+                }
+                else "OTHER_PROJECT_REDACTED"
+            )
+        service = metadata.get("service")
+        if isinstance(service, str) and service in VERSIONS:
+            result["affected_service"] = service
+    return result
 
 
 def validate_request(method, url, permissions):
@@ -110,6 +138,7 @@ def request(method, url, permissions=None, *, token=None):
         headers={
             "Authorization": "Bearer " + token,
             "Content-Type": "application/json",
+            "X-Goog-User-Project": PROJECT,
         },
     )
     try:
@@ -127,7 +156,12 @@ def request(method, url, permissions=None, *, token=None):
                 if isinstance(x, dict) and x.get("reason")
             }
         )
-        raise ReadFailure(error.code, detail.get("status", "UNKNOWN"), reasons) from None
+        raise ReadFailure(
+            error.code,
+            detail.get("status", "UNKNOWN"),
+            reasons,
+            quota_diagnostic(detail.get("details", [])),
+        ) from None
     except (urllib.error.URLError, TimeoutError, OSError, ValueError):
         raise RuntimeError("Read transport/response failure; outcome not verified") from None
     if not isinstance(result, dict):
