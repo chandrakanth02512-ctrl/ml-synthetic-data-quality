@@ -96,6 +96,16 @@ class CloudReader:
                 self.cache[key] = (True, operation())
             except (review_read.ReadFailure, ProbeFailure) as error:
                 self.cache[key] = (False, error)
+            except (
+                RuntimeError,
+                OSError,
+                ValueError,
+                TypeError,
+                KeyError,
+                AttributeError,
+                IndexError,
+            ):
+                self.cache[key] = (False, ProbeFailure(status="INVALID_READ_OR_LOCAL_RESPONSE"))
         success, value = self.cache[key]
         if not success:
             raise value

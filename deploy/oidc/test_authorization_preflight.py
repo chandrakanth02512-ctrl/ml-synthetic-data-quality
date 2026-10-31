@@ -480,17 +480,20 @@ class PreflightTests(unittest.TestCase):
             self.assertNotIn("builds submit", str(call))
 
     def test_failed_request_is_cached_without_a_second_attempt(self):
-        reader = pre.CloudReader()
-        with patch.object(reader, "local", return_value="fake-token"):
-            with patch.object(
-                review_read,
-                "request",
-                side_effect=review_read.ReadFailure(403, "PERMISSION_DENIED"),
-            ) as remote:
-                for _ in range(2):
-                    with self.assertRaises(review_read.ReadFailure):
-                        reader.api("GET", pre.CRM + f"/v3/projects/{pre.PROJECT_NUMBER}")
-        self.assertEqual(remote.call_count, 1)
+        for error in (
+            review_read.ReadFailure(403, "PERMISSION_DENIED"),
+            TypeError(self.cloud.private),
+        ):
+            reader = pre.CloudReader()
+            with patch.object(reader, "local", return_value="fake-token"):
+                with patch.object(review_read, "request", side_effect=error) as remote:
+                    for _ in range(2):
+                        with self.assertRaises(
+                            (review_read.ReadFailure, pre.ProbeFailure)
+                        ) as captured:
+                            reader.api("GET", pre.CRM + f"/v3/projects/{pre.PROJECT_NUMBER}")
+                        self.assertNotIn(self.cloud.private, str(captured.exception))
+            self.assertEqual(remote.call_count, 1)
 
     def test_real_github_adapter_uses_get_and_redacts_failed_stderr(self):
         reader = pre.CloudReader()
