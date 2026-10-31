@@ -1,0 +1,44 @@
+name: Offline Dataproc and BigQuery checks
+on:
+  push:
+    branches: ['feat/dataproc-bigquery']
+  pull_request:
+    paths:
+      - 'src/synthetic_quality_lakehouse/**'
+      - 'tests_lakehouse/**'
+      - 'jobs/dataproc_quality.py'
+      - 'tools/*lakehouse*'
+      - 'requirements-lakehouse.txt'
+      - 'MANIFEST.in'
+      - 'lakehouse/**'
+      - '.github/workflows/lakehouse-checks.yml'
+permissions:
+  contents: read
+jobs:
+  spark-and-bigquery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SPARK_LOCAL_IP: 127.0.0.1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Select Java 21 already installed on hosted runner
+        run: |
+          test -x "$JAVA_HOME_21_X64/bin/java"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_21_X64" >> "$GITHUB_PATH"
+      - name: Install isolated feature dependencies
+        run: |
+          python -m pip install -e '.[dev]' -r requirements-lakehouse.txt
+          python -m pip check
+      - name: Real local Spark and offline GCS/BigQuery boundaries
+        run: python -m pytest -c tests_lakehouse/pytest.ini tests_lakehouse -q
+      - name: Lint and format new implementation
+        run: |
+          python -m ruff check src/synthetic_quality_lakehouse tests_lakehouse tools jobs
+          python -m ruff format --check src/synthetic_quality_lakehouse tests_lakehouse tools jobs
