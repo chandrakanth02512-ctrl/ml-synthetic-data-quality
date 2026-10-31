@@ -1,0 +1,36 @@
+{
+  "pysparkBatch": {
+    "mainPythonFileUri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/code/REVIEWED_FEATURE_COMMIT/dataproc_quality.py",
+    "pythonFileUris": ["gs://synthetic-quality-984592102391-data-as1/lakehouse/code/REVIEWED_FEATURE_COMMIT/lakehouse.zip"],
+    "args": [
+      "--source-uri", "gs://synthetic-quality-984592102391-data-as1/lakehouse/inputs/pilot-001.ndjson",
+      "--source-generation", "REVIEWED_GENERATION",
+      "--source-sha256", "REVIEWED_SHA256",
+      "--output-uri", "gs://synthetic-quality-984592102391-data-as1/lakehouse/phase2",
+      "--run-id", "pilot-001"
+    ]
+  },
+  "runtimeConfig": {
+    "version": "3.0",
+    "properties": {
+      "dataproc.tier": "standard",
+      "spark.driver.cores": "4",
+      "spark.driver.memory": "8g",
+      "spark.executor.cores": "4",
+      "spark.executor.memory": "8g",
+      "spark.executor.instances": "2",
+      "spark.dynamicAllocation.enabled": "false",
+      "spark.sql.shuffle.partitions": "2",
+      "spark.sql.session.timeZone": "UTC"
+    }
+  },
+  "environmentConfig": {
+    "executionConfig": {
+      "serviceAccount": "synthetic-quality-spark@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "subnetworkUri": "projects/gcp-intelligent-data-quality/regions/asia-south1/subnetworks/REVIEWED_SUBNET",
+      "ttl": "600s",
+      "authenticationConfig": {"userWorkloadAuthenticationType": "SERVICE_ACCOUNT"}
+    }
+  },
+  "labels": {"application": "synthetic-quality-lakehouse"}
+}

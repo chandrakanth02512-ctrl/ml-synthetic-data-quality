@@ -1,0 +1,1 @@
+recursive-include src/synthetic_quality_lakehouse/sql *.sql

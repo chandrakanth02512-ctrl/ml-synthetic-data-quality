@@ -1,0 +1,32 @@
+[
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_fingerprint",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "check_name",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "evaluated_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "failed_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "passed",
+    "type": "BOOL",
+    "mode": "REQUIRED"
+  }
+]
