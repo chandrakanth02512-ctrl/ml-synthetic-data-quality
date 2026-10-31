@@ -32,6 +32,119 @@ class ApprovalGateTests(unittest.TestCase):
     def test_reviewed_environment_accepted(self):
         self.assertFalse(gate.validate_environment(self.environment, self.rules, "gcp-deploy"))
 
+    def solo_environment(self):
+        env = copy.deepcopy(self.environment)
+        env["protection_rules"][0]["prevent_self_review"] = False
+        env["protection_rules"][0]["reviewers"] = [
+            {"type": "User", "reviewer": {"id": int(gate.OWNER_ID)}}
+        ]
+        return env
+
+    def test_unapproved_solo_mode_blocks_before_any_api_call(self):
+        with self.assertRaisesRegex(RuntimeError, "explicit owner approval"):
+            gate.verify_gate(
+                "deploy", {}, lambda *_: self.fail("No API call"), approval_mode="solo-owner"
+            )
+
+    def test_approved_solo_mode_requires_exact_owner_and_explicit_self_review_setting(self):
+        self.assertFalse(
+            gate.validate_environment(
+                self.solo_environment(),
+                self.rules,
+                "gcp-deploy",
+                approval_mode="solo-owner",
+                solo_owner_authorized=True,
+            )
+        )
+        for setting in (True, None, "false"):
+            env = self.solo_environment()
+            env["protection_rules"][0]["prevent_self_review"] = setting
+            with self.subTest(setting=setting), self.assertRaises(RuntimeError):
+                gate.validate_environment(
+                    env,
+                    self.rules,
+                    "gcp-deploy",
+                    approval_mode="solo-owner",
+                    solo_owner_authorized=True,
+                )
+        for reviewers in (
+            [],
+            self.environment["protection_rules"][0]["reviewers"],
+            [{"type": "Team", "reviewer": {"id": int(gate.OWNER_ID)}}],
+            self.solo_environment()["protection_rules"][0]["reviewers"] * 2,
+        ):
+            env = self.solo_environment()
+            env["protection_rules"][0]["reviewers"] = reviewers
+            with self.subTest(reviewers=reviewers), self.assertRaises(RuntimeError):
+                gate.validate_environment(
+                    env,
+                    self.rules,
+                    "gcp-deploy",
+                    approval_mode="solo-owner",
+                    solo_owner_authorized=True,
+                )
+
+    def test_solo_mode_does_not_bypass_admin_or_branch_restrictions(self):
+        env = self.solo_environment()
+        env["can_admins_bypass"] = True
+        with self.assertRaisesRegex(RuntimeError, "bypass"):
+            gate.validate_environment(
+                env,
+                self.rules,
+                "gcp-deploy",
+                approval_mode="solo-owner",
+                solo_owner_authorized=True,
+            )
+        with self.assertRaisesRegex(RuntimeError, "explicit main"):
+            gate.validate_environment(
+                self.solo_environment(),
+                [],
+                "gcp-deploy",
+                approval_mode="solo-owner",
+                solo_owner_authorized=True,
+            )
+
+    def test_solo_mode_requires_protected_current_main_before_environment_lookup(self):
+        sha = "a" * 40
+        context = {"GH_TOKEN": "fake", "GITHUB_SHA": sha}
+        for protected, actual in ((False, sha), (True, "b" * 40), (None, sha)):
+            with self.subTest(protected=protected, sha=actual):
+
+                def getter(url, token, protected=protected, actual=actual):
+                    self.assertTrue(url.endswith("/branches/main"))
+                    return {"name": "main", "protected": protected, "commit": {"sha": actual}}
+
+                with self.assertRaisesRegex(RuntimeError, "Protected main"):
+                    gate.verify_gate(
+                        "deploy",
+                        context,
+                        getter,
+                        approval_mode="solo-owner",
+                        solo_owner_authorized=True,
+                    )
+
+    def test_approved_solo_gate_reads_protected_main_and_separate_environment(self):
+        sha = "a" * 40
+        calls = []
+
+        def getter(url, token):
+            calls.append(url)
+            if url.endswith("/branches/main"):
+                return {"name": "main", "protected": True, "commit": {"sha": sha}}
+            if "deployment-branch-policies" in url:
+                return {"total_count": 1, "branch_policies": self.rules}
+            return self.solo_environment()
+
+        with patch("sys.stdout", io.StringIO()):
+            gate.verify_gate(
+                "deploy",
+                {"GH_TOKEN": "fake", "GITHUB_SHA": sha},
+                getter,
+                approval_mode="solo-owner",
+                solo_owner_authorized=True,
+            )
+        self.assertEqual(len(calls), 3)
+
     def test_environment_identity_mismatch_rejected(self):
         with self.assertRaisesRegex(RuntimeError, "identity"):
             gate.validate_environment(self.environment, self.rules, "gcp-execute")

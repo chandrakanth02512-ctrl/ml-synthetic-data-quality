@@ -87,11 +87,13 @@ def identity_plan():
             "attribute.event_name": "assertion.event_name",
             "attribute.workflow_ref": "assertion.workflow_ref",
             "attribute.environment": "assertion.environment",
+            "attribute.actor_id": "assertion.actor_id",
         }
         condition = " && ".join(
             [
                 f"attribute.repository_id == '{REPO_ID}'",
                 f"attribute.repository_owner_id == '{OWNER_ID}'",
+                f"attribute.actor_id == '{OWNER_ID}'",
                 "attribute.ref == 'refs/heads/main'",
                 "attribute.ref_type == 'branch'",
                 "attribute.event_name == 'workflow_dispatch'",
@@ -347,10 +349,8 @@ def owner_context():
 
 def verify_image(cfg):
     require(
-        cfg.get("enabled") is True
-        and bool(cfg.get("image_digest"))
-        and bool(cfg.get("replacement_build_id")),
-        "Reviewed image pin disabled/incomplete; no setup writes allowed",
+        bool(cfg.get("image_digest")) and bool(cfg.get("replacement_build_id")),
+        "Reviewed image pin incomplete; no setup writes allowed",
     )
     require(
         cfg.get("replacement_build_id") != "6f75c5dd-cc3a-4d47-9c9d-43f51fa3c4ba",
@@ -585,6 +585,7 @@ def main():
         return
     cfg = load_config(require_enabled=args.action == "apply")
     if args.action == "apply":
+        require(cfg.get("enabled") is True, "Reviewed configuration disabled/incomplete; no writes")
         require(args.approve == APPROVAL, "Exact owner setup approval phrase required")
     missing_apis = owner_context()
     verify_image(cfg)

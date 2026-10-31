@@ -1,5 +1,7 @@
 {
   "enabled": false,
+  "approval_mode": "independent",
+  "solo_owner_approval_authorized": false,
   "image_digest": "sha256:35a1e032472e06e4b21c55996b46faa0090deef3a4bdee710f27ddcb85e33116",
   "replacement_build_id": "fc1ca075-570b-45da-b588-977423c49f0d",
   "environment_bypass_disabled_attested": {

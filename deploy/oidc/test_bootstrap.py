@@ -200,6 +200,11 @@ class BootstrapTests(unittest.TestCase):
         self.assertFalse(self.writes())
         self.assertTrue(self.validate_job_mock.call_count == 0)
 
+    def test_disabled_configuration_can_run_read_only_check_without_enabling(self):
+        self.cfg["enabled"] = False
+        self.run_main("check")
+        self.assertFalse(self.writes())
+
     def test_check_missing_resources_and_apis_never_writes(self):
         self.resources = {}
         self.policies = {}

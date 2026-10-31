@@ -5,13 +5,13 @@ execution or Cloud Build submission were performed.** The proposed authorization
 must be reviewed and explicitly approved by the project owner before setup.
 
 The application source pin remains
-`34cc3d46b662a9f0560c3ff846d68b327d52e4b8`; source provenance still requires the
-review below. These workflows never build an image and
+`34cc3d46b662a9f0560c3ff846d68b327d52e4b8`; the owner-run archive comparison has
+succeeded on the evidence basis below. These workflows never build an image and
 never access, delete or reset the Cloud Shell recovery receipts. PR #2 remains a
 separate unmerged recovery-tools change; this authentication proposal does not
 depend on its tools or run another recovery attempt.
 
-## Recorded image identity; activation and source verification still pending
+## Recorded image and owner-verified source; activation still disabled
 
 The owner verified the successful replacement Build and Docker step in Cloud Shell,
 matched its published digest against Artifact Registry, and confirmed the dedicated
@@ -32,6 +32,8 @@ No digest is guessed and no tag/latest fallback exists. Both manual workflows st
 before requesting GCP credentials while disabled; authorization `apply` also stops.
 The rest of `config.json` fixes the planned data bucket and `smoke-001` namespace.
 Both `environment_bypass_disabled_attested` entries also default to `false`.
+`approval_mode` remains `independent` and `solo_owner_approval_authorized` remains
+`false`; the proposed solo-owner policy cannot activate under these defaults.
 
 To recheck these exact values in authenticated Google Cloud Shell using reads:
 
@@ -60,11 +62,13 @@ The source audit and exact outstanding evidence are in
 [source-provenance.md](source-provenance.md). Build success, a matching image digest,
 the correct build identity and source bucket establish different facts from source
 content identity. Do not activate if the consumed source cannot be tied to the pin.
-The subsequently supplied resolved object/generation and archive hashes are
-consistent and recorded in `source-evidence.json`. The remaining source check is
-to download that exact generation and run the offline `verify_source_archive.py`
-comparison against the pinned upload allowlist. The archive has not been downloaded
-or verified by Codex; matching tags or archive hashes alone do not prove Git contents.
+The supplied resolved object/generation and archive hashes are consistent. The
+owner downloaded that exact generation and successfully ran the offline verifier:
+**19 files matched the pinned application**, with archive SHA-256
+`84d69e14c3934d8965edd6c734417710816cb20a615d713841bc21c68612519e`.
+`source-evidence.json` records the owner-run result and its limits: no independent
+Codex archive inspection or signed provenance is claimed. Tags/hashes alone were
+not used as Git-content proof. No source re-verification is currently requested.
 
 The verified public values are recorded through this draft PR. Keep `enabled: false`
 and both bypass attestations `false` until the remaining checks and owner-approved
@@ -78,6 +82,7 @@ activation are complete.
 | Region | `asia-south1` |
 | Repository ID | `1436792250` |
 | Repository owner ID | `341606319` |
+| Dispatching actor ID | `341606319` |
 | Git ref / ref type | `refs/heads/main` / `branch` |
 | Event | `workflow_dispatch` |
 | Deploy workflow/environment | `.github/workflows/gcp-deploy.yml@refs/heads/main` / `gcp-deploy` |
@@ -89,6 +94,9 @@ claims fail closed. Trust does not rely on the repository name alone or assume t
 older GitHub `sub` format. Two **separate workload identity pools** prevent one
 provider's principalSet from impersonating both service accounts. Each provider
 has one explicit audience, identical to its auth-action audience.
+Provider CEL now also restricts the dispatcher to the exact owner ID. Workflows
+and runtime reject reruns (`run_attempt != 1`); inspect ambiguous outcomes and
+request new action approval rather than rerunning a workflow.
 
 All actions are pinned to verified commit SHAs. Jobs request only contents/actions
 read and OIDC-token write. A read-only pre-authentication guard verifies environment
@@ -121,9 +129,12 @@ Required-reviewer/environment features depend on the repository's GitHub plan;
 missing/inaccessible rules block authentication. No environment is automatically
 created or made permissive by setup.
 
-The owner is the sole repository owner. The current policy is intentionally
-unchanged; see [approval-options.md](approval-options.md) for secure alternatives
-and their tradeoffs before choosing any policy change.
+For this sole-owner personal project, the recommended prepared alternative is
+explicit owner approval in both separate environments, with self-review permitted
+only after a separate reviewed policy authorization. No setting is changed now;
+see [approval-options.md](approval-options.md). Independent review remains the
+default; `solo-owner` mode requires only the exact owner reviewer and verifies
+protected main/current dispatch commit before GCP authentication.
 
 Manual workflows only become available after a separately approved merge to `main`.
 Neither this draft PR nor its CI trusts the feature branch or runs those workflows.
@@ -171,8 +182,8 @@ python3 deploy/oidc/bootstrap.py plan
 `plan` is offline and makes no cloud calls. It prints the exact resources, audience,
 CEL conditions, roles and additive bindings for owner review.
 
-After recording the verified image, configuring GitHub gates, and reviewing current
-project IAM/organization restrictions, the owner may run this **read-only** check:
+With the image recorded and deployment still disabled, the owner may run this
+**read-only** check while reviewing authorization prerequisites:
 
 ```bash
 python3 deploy/oidc/bootstrap.py check
@@ -185,7 +196,12 @@ providers, service accounts, custom roles and bindings are inspected. Missing
 resources are distinguished from permission/API/transport failures. Unexpected
 trust, extra providers, dedicated-account keys, broader grants, disabled resources
 or role drift stop without repair. Other principals' existing bindings are preserved.
-An incomplete/disabled image pin blocks this check, with no changes made.
+An incomplete image pin blocks this check; a valid pin with `enabled: false` permits
+read-only inspection. Disabling deployment never needs to be reversed for a read.
+Run the additional exact checks in [authorization-review.md](authorization-review.md)
+for effective IAM, ancestors, deny/PAB policies, org constraints, VPC Service
+Controls, quotas, GitHub protection and WIF readiness. Those checks do not enable
+APIs or repair permissions. Missing access or policy visibility remains blocking.
 
 **Only after new explicit owner approval**, the proposed authorization command is:
 

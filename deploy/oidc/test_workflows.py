@@ -27,6 +27,10 @@ class WorkflowTests(unittest.TestCase):
                 "github.ref == 'refs/heads/main'",
                 f"github.repository_id == '{settings.REPO_ID}'",
                 f"github.repository_owner_id == '{settings.OWNER_ID}'",
+                f"github.actor_id == '{settings.OWNER_ID}'",
+                "github.run_attempt == '1'",
+                'approval_mode=config["approval_mode"]',
+                'solo_owner_authorized=config["solo_owner_approval_authorized"]',
                 f"environment: gcp-{action}",
                 "group: gcp-synthetic-quality-control",
                 "cancel-in-progress: false",
@@ -44,6 +48,13 @@ class WorkflowTests(unittest.TestCase):
             audience = re.search(r"(?m)^\s+audience: (.+)$", text).group(1)
             self.assertEqual(provider, plan["provider"]["name"])
             self.assertEqual([audience], plan["provider"]["allowedAudiences"])
+            self.assertEqual(
+                plan["provider"]["attributeMapping"]["attribute.actor_id"], "assertion.actor_id"
+            )
+            self.assertIn(
+                f"attribute.actor_id == '{settings.OWNER_ID}'",
+                plan["provider"]["attributeCondition"],
+            )
             self.assertLess(
                 text.index("load_config(require_enabled=True)"),
                 text.index("uses: google-github-actions/auth@"),

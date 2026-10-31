@@ -2,6 +2,8 @@
 
 Prepared in Codex Cloud on October 30, 2026. No GCP/IAM setup, Cloud Build,
 Cloud Run deployment/execution or manual workflow dispatch was performed.
+Updated October 31, 2026 (Asia/Calcutta), with owner-run source success and inactive
+solo-owner approval preparation. Live operations remain separately approved.
 
 ## Saved work and source preservation
 
@@ -26,17 +28,21 @@ python3 -m ruff format --check src tests deploy/oidc
 python3 -m pip check
 ```
 
-- **95 OIDC/source tests passed.** Fakes/mocks cover separate trust pools, exact numeric
+- **108 OIDC/source/review tests passed.** Fakes/mocks cover separate trust pools, exact numeric
   IDs/main/manual event/workflow/environment/audiences, least-privilege grants,
   additive idempotent setup, disabled configuration, existing-resource drift,
   cancelled-build rejection, Build/registry digest equality, approval rules,
   owner attestation for unreported bypass settings, job UID/etag/history,
   digest-only creation, and no automatic POST retry or execution from deployment.
-- The **17 archive tests** additionally cover supplied hash decoding, full pinned
+- The **18 archive tests** additionally cover supplied hash decoding, full pinned
   file fixtures, modified/missing/extra/duplicate inputs, generation and Build drift,
   MD5-only rejection, unsafe paths/links/devices/modes, compressed/decompressed size
   bounds and hidden trailing content. All archives are local synthetic fixtures,
   not copies of the live consumed source. No extraction or activation is performed.
+- New regressions cover disabled-by-default solo policy, exact owner reviewer,
+  protected/current main, owner-only initial dispatch, disabled read-only bootstrap,
+  GET/testIamPermissions-only review requests, distinct permission/API/missing errors
+  and complete pagination. Prepared solo-owner support is not enabled or approved.
 - Ruff **0.17.3** lint and formatting passed over `src`, `tests`, `deploy/oidc`.
 - Existing Python **3.12.14** environment dependency consistency passed. New
   deployment tools import only standard-library and sibling modules; they install
@@ -70,15 +76,19 @@ bucket. These public values are recorded in disabled configuration. Codex has no
 independently queried them. The owner then supplied matching submitted/resolved
 source generation `1793365313077688`, archive MD5/SHA-256, exact Docker arguments,
 environment and substitutions. The metadata is consistent with the pinned recovery
-configuration, and is recorded in `source-evidence.json`. The live archive itself
-has not been supplied or downloaded, so comparison of consumed bytes to the Git
-pin remains pending. See `source-provenance.md` for exact generation-specific read
-and offline verification instructions. A valid image/archive identity does not by
-itself satisfy source-content proof. Deployment and execution remain disabled.
+configuration, and is recorded in `source-evidence.json`. The owner subsequently
+downloaded the exact GCS generation and reported a successful actual archive
+comparison: `ARCHIVE_CONTENTS_MATCH_PINNED_APPLICATION`, 19 files, exact application
+commit, build ID, source archive hash and image digest. That owner-run result is
+recorded with its limitations. Codex did not inspect the live bytes and does not
+claim independent signed provenance. Source comparison is complete on that evidence
+basis; deployment and execution remain disabled.
 
-The approval policy is unchanged. The sole-owner constraint and alternatives are
-reviewed in `approval-options.md`; the current non-self-review rule prevents the
-owner approving their own dispatch. No alternative has been applied.
+Independent approval remains the default, with solo-owner authorization false.
+`approval-options.md` recommends explicitly authorized self-approval for this
+personal project while retaining separate exact-owner reviewer gates. Support is
+prepared but inactive; no live protection setting was changed. The new
+`authorization-review.md` provides exact read-only checks and stop conditions.
 
 Before activation, the owner must review that image, the source provenance,
 GitHub environment features/reviewers/main-only rules/disabled bypass, effective

@@ -21,6 +21,15 @@ KNOWN_CANCELLED = "6f75c5dd-cc3a-4d47-9c9d-43f51fa3c4ba"
 IMAGE_BASE = f"{REGION}-docker.pkg.dev/{PROJECT}/{REPOSITORY}/{IMAGE}"
 
 
+def validate_approval_policy(mode, solo_owner_authorized, require_authorized=True):
+    if mode not in {"independent", "solo-owner"} or type(solo_owner_authorized) is not bool:
+        raise RuntimeError("Unknown approval mode or non-boolean solo-owner authorization")
+    if mode == "independent" and solo_owner_authorized:
+        raise RuntimeError("Independent approval mode must not carry solo-owner authorization")
+    if mode == "solo-owner" and require_authorized and not solo_owner_authorized:
+        raise RuntimeError("Solo-owner approval policy requires separate explicit owner approval")
+
+
 def load_config(require_enabled=False, path=None):
     config = json.loads(Path(path or Path(__file__).with_name("config.json")).read_text())
     if set(config) != {
@@ -30,10 +39,17 @@ def load_config(require_enabled=False, path=None):
         "data_bucket",
         "run_id",
         "environment_bypass_disabled_attested",
+        "approval_mode",
+        "solo_owner_approval_authorized",
     }:
         raise RuntimeError("Unexpected configuration fields; review required")
     if type(config["enabled"]) is not bool:
         raise RuntimeError("enabled must be a boolean")
+    validate_approval_policy(
+        config["approval_mode"],
+        config["solo_owner_approval_authorized"],
+        require_authorized=require_enabled,
+    )
     if config["data_bucket"] != f"synthetic-quality-{PROJECT_NUMBER}-data-as1":
         raise RuntimeError(
             "Only the reviewed planned data bucket is allowed; protected bucket excluded"

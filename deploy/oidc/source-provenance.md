@@ -1,6 +1,6 @@
 # Replacement image and source provenance review
 
-## Result: consistent consumed-archive metadata; Git contents still pending
+## Result: owner-run source comparison successful
 
 The owner supplied these Cloud Shell verification results:
 
@@ -16,14 +16,21 @@ The owner supplied these Cloud Shell verification results:
 | Source generation | `1793365313077688` |
 | Source archive SHA-256 | `84d69e14c3934d8965edd6c734417710816cb20a615d713841bc21c68612519e` |
 | Source archive MD5 | `40a096287045897d5c441ef6b88968fe` |
-| Uploaded archive contents | Not yet available to compare |
-| Link from consumed source bytes to pinned Git commit | Not established |
+| Uploaded archive contents | Owner-run verifier succeeded; 19 files matched |
+| Link from consumed source bytes to pinned Git commit | Owner-verified match to `34cc3d46b662a9f0560c3ff846d68b327d52e4b8` |
 
 Codex has no GCP identity or permitted GCP API egress and has not independently
 queried the Build or registry. The supplied non-secret excerpts are recorded in
 `source-evidence.json`, explicitly labelled as owner-provided evidence rather than
 a signed attestation or independently fetched API response. Recording this evidence
-does not mark source verification complete or enable setup.
+does not enable setup. The owner subsequently downloaded the exact resolved GCS
+generation in authenticated Cloud Shell and reported
+`ARCHIVE_CONTENTS_MATCH_PINNED_APPLICATION`, **19 matched files**, the pinned commit,
+exact build/image identities and archive SHA-256 above. This successful owner-run
+result is recorded under `owner_run_verification` in `source-evidence.json`.
+Codex has not downloaded or inspected that live archive, and no independently
+verified signed provenance/attestation is claimed. The source-content check is
+complete on that stated evidence basis; it is no longer a pending user action.
 
 The supplied `source.storageSource` exactly equals
 `sourceProvenance.resolvedStorageSource`. The `fileHashes` key identifies that same
@@ -33,8 +40,8 @@ lengths; URL-safe and standard base64 are accepted. The given Docker arguments,
 after the reviewed recovery substitutions. The archive SHA-256 above is a different
 digest from the published container image digest; they must not be interchanged.
 
-This establishes a precise archive to inspect. A hash identifies archive bytes but
-does not reveal their contents or bind them to a Git commit without comparison.
+The owner-run comparison supplies the file-content comparison in addition to the
+precise archive identity. The tag and hash by themselves were never used as proof.
 
 ## What the repository audit establishes
 
@@ -55,7 +62,7 @@ server-side source evidence.
 The `_TAG` revision suffix, successful Docker step, correct bucket/account and
 matching output digest do not individually or together prove source contents.
 
-## Exact additional read-only verification
+## Optional read-only reproduction of the completed comparison
 
 From an already authorized Cloud Shell, inspect only this existing build:
 
@@ -122,14 +129,16 @@ or special file modes, hidden trailing data and oversized compressed/decompresse
 contents. It never extracts, executes, downloads, writes evidence, changes config
 or reads recovery receipts. No source/archive success is claimed from unit fixtures.
 
-Return the verifier's JSON result for review. A `STOP`, permission failure, missing
+The successful JSON result has now been reported by the owner. If repeating the
+check for a new review, a `STOP`, permission failure, missing
 generation, hash mismatch or different inventory leaves source identity unverified.
 Do not repair the archive, use a newer generation, change the pin, retry a build,
 set activation flags or weaken verification. Preserve the downloaded evidence.
 
 Generation-specific object reads/local downloads do not modify GCP resources but
 may incur small storage read/transfer charges. No live archive download was
-performed by Codex. Synthetic test archives are unrelated to this live archive.
+performed by Codex. The owner performed the real download/comparison; synthetic
+test archives are unrelated to that live archive and do not substitute for it.
 Do not substitute the latest object generation or a new checkout for the consumed
 archive. A fresh checkout verifies the reference side of a comparison only.
 

@@ -77,10 +77,13 @@ def verify_dispatch(env, action, config):
         "GITHUB_REF": "refs/heads/main",
         "GITHUB_REPOSITORY_ID": REPO_ID,
         "GITHUB_REPOSITORY_OWNER_ID": OWNER_ID,
+        "GITHUB_ACTOR_ID": OWNER_ID,
+        "GITHUB_RUN_ATTEMPT": "1",
     }
     if any(env.get(k) != v for k, v in required.items()):
         raise RuntimeError(
-            "Only manual dispatch from the exact repository owner and main branch is allowed"
+            "Only first-attempt manual dispatch by the exact owner "
+            "from the repository main is allowed"
         )
     if env.get("CONFIRM_DIGEST") != config["image_digest"] or env.get("CONFIRM_ACTION") != "true":
         raise RuntimeError("Explicit action and exact digest confirmation required")

@@ -6,12 +6,13 @@ Missing/unsupported policy evidence or HTTP failures stop rather than weaken gat
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
 from urllib.parse import quote
 
-from settings import REPO
+from settings import OWNER_ID, REPO, validate_approval_policy
 
 ENVIRONMENTS = {"deploy": "gcp-deploy", "execute": "gcp-execute"}
 API_BASE = "https://api.github.com/repos/" + REPO
@@ -23,7 +24,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def get_json(url, token):
-    if not url.startswith(API_BASE + "/environments/"):
+    if not (url.startswith(API_BASE + "/environments/") or url == API_BASE + "/branches/main"):
         raise RuntimeError("GitHub request outside approval-policy allowlist")
     if not token or any(c.isspace() for c in token):
         raise RuntimeError("Read-only GitHub token unavailable for approval-policy inspection")
@@ -50,7 +51,15 @@ def get_json(url, token):
     return data
 
 
-def validate_environment(environment, rules, expected_name, owner_attested=False):
+def validate_environment(
+    environment,
+    rules,
+    expected_name,
+    owner_attested=False,
+    approval_mode="independent",
+    solo_owner_authorized=False,
+):
+    validate_approval_policy(approval_mode, solo_owner_authorized)
     if environment.get("name") != expected_name:
         raise RuntimeError("GitHub environment identity differs from the approval gate")
     reviewers = [
@@ -58,8 +67,22 @@ def validate_environment(environment, rules, expected_name, owner_attested=False
     ]
     if len(reviewers) != 1 or not reviewers[0].get("reviewers"):
         raise RuntimeError("A nonempty required-reviewers rule is mandatory")
-    if reviewers[0].get("prevent_self_review") is not True:
-        raise RuntimeError("Prevent self-review must be enabled; use a different required reviewer")
+    if approval_mode == "independent":
+        if reviewers[0].get("prevent_self_review") is not True:
+            raise RuntimeError(
+                "Prevent self-review must be enabled; use a different required reviewer"
+            )
+    else:
+        eligible = reviewers[0]["reviewers"]
+        if (
+            reviewers[0].get("prevent_self_review") is not False
+            or len(eligible) != 1
+            or eligible[0].get("type") != "User"
+            or str(eligible[0].get("reviewer", {}).get("id")) != OWNER_ID
+        ):
+            raise RuntimeError(
+                "Solo-owner mode requires only the exact owner reviewer and self-review allowed"
+            )
     bypass = environment.get("can_admins_bypass")
     if bypass is True:
         raise RuntimeError("Environment admin bypass must be disabled")
@@ -106,20 +129,46 @@ def branch_rules(url, token, getter=get_json):
         page += 1
 
 
-def verify_gate(action, env=None, getter=get_json, owner_attested=False):
+def verify_gate(
+    action,
+    env=None,
+    getter=get_json,
+    owner_attested=False,
+    approval_mode="independent",
+    solo_owner_authorized=False,
+):
+    validate_approval_policy(approval_mode, solo_owner_authorized)
     environment_name = ENVIRONMENTS.get(action)
     if environment_name is None:
         raise RuntimeError("Unknown approval-gate action")
-    token = (os.environ if env is None else env).get("GH_TOKEN", "")
+    context = os.environ if env is None else env
+    token = context.get("GH_TOKEN", "")
+    if approval_mode == "solo-owner":
+        branch = getter(API_BASE + "/branches/main", token)
+        sha = context.get("GITHUB_SHA", "")
+        if (
+            branch.get("name") != "main"
+            or branch.get("protected") is not True
+            or not re.fullmatch(r"[0-9a-f]{40}", sha)
+            or branch.get("commit", {}).get("sha") != sha
+        ):
+            raise RuntimeError("Protected main and the current dispatched commit must be verified")
     url = API_BASE + "/environments/" + quote(environment_name, safe="")
     environment = getter(url, token)
     rules = branch_rules(url + "/deployment-branch-policies", token, getter)
     unknown_bypass = validate_environment(
-        environment, rules, environment_name, owner_attested=owner_attested
+        environment,
+        rules,
+        environment_name,
+        owner_attested=owner_attested,
+        approval_mode=approval_mode,
+        solo_owner_authorized=solo_owner_authorized,
     )
     print(
-        "PASS: separate GitHub approval gate, non-self reviewer, and exact main branch:",
+        "PASS: separate GitHub approval gate and exact main branch:",
         environment_name,
+        "approval mode:",
+        approval_mode,
     )
     if unknown_bypass:
         print(

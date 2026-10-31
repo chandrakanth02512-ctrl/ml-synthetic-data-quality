@@ -82,6 +82,17 @@ class SourceArchiveTests(unittest.TestCase):
         self.assertEqual(hashes["MD5"], "40a096287045897d5c441ef6b88968fe")
         self.assertFalse(self.config["enabled"])
 
+    def test_owner_run_report_matches_reviewed_inputs_without_signed_provenance_claim(self):
+        _, hashes = proof.validate_evidence(self.evidence, self.config)
+        report = self.evidence["owner_run_verification"]
+        self.assertEqual(report["status"], "ARCHIVE_CONTENTS_MATCH_PINNED_APPLICATION")
+        self.assertEqual(report["matched_files"], len(proof.expected_sources()))
+        self.assertEqual(report["application_commit"], settings.APP_REV)
+        self.assertEqual(report["source_archive_sha256"], hashes["SHA256"])
+        self.assertEqual(report["replacement_build_id"], self.config["replacement_build_id"])
+        self.assertEqual(report["image_uri"], settings.image_uri(self.config))
+        self.assertIn("not independent signed provenance", report["verification_basis"])
+
     def test_reference_inventory_matches_pinned_upload_allowlist(self):
         expected = proof.expected_sources()
         self.assertEqual(len(expected), 19)

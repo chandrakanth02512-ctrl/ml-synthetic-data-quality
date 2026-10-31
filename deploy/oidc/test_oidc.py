@@ -17,6 +17,8 @@ import settings
 def configured():
     return {
         "enabled": True,
+        "approval_mode": "independent",
+        "solo_owner_approval_authorized": False,
         "image_digest": "sha256:" + "a" * 64,
         "replacement_build_id": "11111111-2222-4333-8444-555555555555",
         "environment_bypass_disabled_attested": {"gcp-deploy": True, "gcp-execute": True},
@@ -76,6 +78,8 @@ class OidcTests(unittest.TestCase):
             "GITHUB_REF": "refs/heads/main",
             "GITHUB_REPOSITORY_ID": settings.REPO_ID,
             "GITHUB_REPOSITORY_OWNER_ID": settings.OWNER_ID,
+            "GITHUB_ACTOR_ID": settings.OWNER_ID,
+            "GITHUB_RUN_ATTEMPT": "1",
             "CONFIRM_DIGEST": self.cfg["image_digest"],
             "CONFIRM_ACTION": "true",
             "CONFIRM_JOB_UID": "reviewed-job-uid",
@@ -96,6 +100,8 @@ class OidcTests(unittest.TestCase):
     def test_default_configuration_is_disabled(self):
         config = settings.load_config()
         self.assertFalse(config["enabled"])
+        self.assertEqual(config["approval_mode"], "independent")
+        self.assertFalse(config["solo_owner_approval_authorized"])
         self.assertRegex(config["image_digest"], r"^sha256:[0-9a-f]{64}$")
         self.assertNotEqual(config["replacement_build_id"], settings.KNOWN_CANCELLED)
         self.assertEqual(
@@ -113,6 +119,22 @@ class OidcTests(unittest.TestCase):
                 p.write_text(json.dumps(cfg))
                 with self.assertRaisesRegex(RuntimeError, "image_digest"):
                     settings.load_config(True, p)
+
+    def test_solo_policy_requires_explicit_boolean_approval_before_activation(self):
+        for authorized in (False, None, "true", 1):
+            cfg = {
+                **self.cfg,
+                "approval_mode": "solo-owner",
+                "solo_owner_approval_authorized": authorized,
+            }
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / "config.json"
+                path.write_text(json.dumps(cfg))
+                with self.assertRaises(RuntimeError):
+                    settings.load_config(True, path)
+        settings.validate_approval_policy("solo-owner", True)
+        with self.assertRaises(RuntimeError):
+            settings.validate_approval_policy("independent", True)
 
     def test_cancelled_build_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -144,6 +166,8 @@ class OidcTests(unittest.TestCase):
             ("GITHUB_REF", "refs/heads/feature"),
             ("GITHUB_REPOSITORY_ID", "1"),
             ("GITHUB_REPOSITORY_OWNER_ID", "2"),
+            ("GITHUB_ACTOR_ID", "2"),
+            ("GITHUB_RUN_ATTEMPT", "2"),
             ("CONFIRM_ACTION", "false"),
             ("CONFIRM_DIGEST", "sha256:" + "b" * 64),
         ):
