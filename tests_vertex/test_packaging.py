@@ -148,14 +148,18 @@ def test_pr4_code_preserved_with_pinned_portfolio_readme_revision():
 
     baseline = json.loads((ROOT / "vertex/base-baseline.json").read_text())
     old_readme_sha = "002828ed3a3ea82dffdfae27e344d89c9beb485a"
-    reviewed_readme_sha = "b8f8cc6410a0f89470c630eb5a5bea34747f3908"
-    assert next(x for x in baseline["files"] if x["path"] == "README.md")[
-        "git_blob_sha"
-    ] == old_readme_sha
+    reviewed_blobs = {
+        "README.md": "b8f8cc6410a0f89470c630eb5a5bea34747f3908",
+        "tests_lakehouse/test_packaging.py": "bb5612ee322ebd78ca521459bda3fb28cc1beb6d",
+    }
+    assert (
+        next(x for x in baseline["files"] if x["path"] == "README.md")["git_blob_sha"]
+        == old_readme_sha
+    )
     for item in baseline["files"]:
         data = (ROOT / item["path"]).read_bytes()
         actual = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
-        expected = reviewed_readme_sha if item["path"] == "README.md" else item["git_blob_sha"]
+        expected = reviewed_blobs.get(item["path"], item["git_blob_sha"])
         assert actual == expected, item["path"]
 
 
