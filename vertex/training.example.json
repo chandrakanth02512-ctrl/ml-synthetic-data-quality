@@ -1,0 +1,27 @@
+{
+  "run_id": "vertex-smoke-001",
+  "training": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/phase2/runs/training-pilot/completion.json",
+    "generation": 0,
+    "sha256": "REPLACE_WITH_VERIFIED_TRAINING_MANIFEST_SHA256"
+  },
+  "evaluation": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/phase2/runs/evaluation-pilot/completion.json",
+    "generation": 0,
+    "sha256": "REPLACE_WITH_VERIFIED_EVALUATION_MANIFEST_SHA256"
+  },
+  "truth": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/vertex/truth/vertex-smoke-001.ndjson",
+    "generation": 0,
+    "sha256": "REPLACE_WITH_STAGED_EVALUATION_TRUTH_SHA256"
+  },
+  "output_uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/vertex",
+  "model": {
+    "n_estimators": 200,
+    "max_samples": 256,
+    "contamination": 0.02,
+    "random_state": 42
+  },
+  "baseline_quantile": 0.995,
+  "max_rows": 10000
+}

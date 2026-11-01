@@ -1,0 +1,32 @@
+[
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_fingerprint",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "model_sha256",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "training_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "evaluation_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "committed_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]
