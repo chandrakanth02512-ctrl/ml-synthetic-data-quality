@@ -143,16 +143,20 @@ def test_truth_staging_cli_creates_only_evaluation_object(
     assert json.loads(capsys.readouterr().out)["uri"].endswith("vertex-smoke-001.ndjson")
 
 
-def test_pr4_files_and_existing_application_preserved():
+def test_pr4_code_preserved_with_pinned_portfolio_readme_revision():
     import hashlib
 
     baseline = json.loads((ROOT / "vertex/base-baseline.json").read_text())
+    old_readme_sha = "002828ed3a3ea82dffdfae27e344d89c9beb485a"
+    reviewed_readme_sha = "b8f8cc6410a0f89470c630eb5a5bea34747f3908"
+    assert next(x for x in baseline["files"] if x["path"] == "README.md")[
+        "git_blob_sha"
+    ] == old_readme_sha
     for item in baseline["files"]:
         data = (ROOT / item["path"]).read_bytes()
-        assert (
-            hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
-            == item["git_blob_sha"]
-        )
+        actual = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+        expected = reviewed_readme_sha if item["path"] == "README.md" else item["git_blob_sha"]
+        assert actual == expected, item["path"]
 
 
 def test_new_ci_is_offline_and_manual_job_is_not_a_workflow_trigger():
