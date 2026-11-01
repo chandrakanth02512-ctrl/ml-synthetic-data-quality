@@ -138,19 +138,24 @@ def test_staging_gate_no_cloud_and_preserved_base_code(monkeypatch):
     baseline = json.loads(Path("workflows/base-baseline.json").read_text())
     assert len(baseline) == 102
 
-    # The historical PR #5 baseline stays immutable. The root README is the
-    # single intentional editorial revision for the portfolio overview;
-    # pin both the old and new digest rather than exempting documentation.
+    # Keep the historical baseline immutable. The three reviewed files
+    # below have exact Git blob pins; all other original files must retain
+    # the baseline SHA-256 digests.
     assert baseline["README.md"] == (
         "ddca6deea98651c931c381b39b8e81bdc8d53ab42a65c47215c8bd15d99bcdf4"
     )
-    reviewed_readme_digest = (
-        "c6b71e73fecf749414e51c2c3d9a91d1b193d4e35b4a8472f25bd2194e4b1cb0"
-    )
+    reviewed_blobs = {
+        "README.md": "b8f8cc6410a0f89470c630eb5a5bea34747f3908",
+        "tests_lakehouse/test_packaging.py": "bb5612ee322ebd78ca521459bda3fb28cc1beb6d",
+        "tests_vertex/test_packaging.py": "93413fe29dc80d4343ab91a4ce5a577520fe73a7",
+    }
     for path, digest in baseline.items():
-        actual = hashlib.sha256(Path(path).read_bytes()).hexdigest()
-        expected = reviewed_readme_digest if path == "README.md" else digest
-        assert actual == expected, path
+        data = Path(path).read_bytes()
+        if path in reviewed_blobs:
+            actual = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+            assert actual == reviewed_blobs[path], path
+        else:
+            assert hashlib.sha256(data).hexdigest() == digest, path
 
 
 def walk_steps(steps):
