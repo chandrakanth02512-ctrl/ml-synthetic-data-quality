@@ -1,0 +1,52 @@
+[
+  {
+    "name": "run_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_fingerprint",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "clean_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "quarantined_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "quality_rows",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_uri",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_generation",
+    "type": "INT64",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "source_sha256",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "committed_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]
