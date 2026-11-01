@@ -1,4 +1,57 @@
-# ML-Based Synthetic Data Quality & Anomaly Detection
+# GCP Intelligent Data Quality & Anomaly Detection Platform
+
+An end-to-end **data engineering + machine learning portfolio implementation** for synthetic financial transactions. It combines PySpark data-quality validation, quarantine, transactional BigQuery publication, unsupervised Isolation Forest evaluation, and recovery-aware orchestration.
+
+> **Verification status — November 2026:** All planned integration components are implemented in code and validated offline. **No end-to-end managed GCP execution has been verified.** GitHub CI and local Spark/scikit-learn runs demonstrate implementation behavior, not successful Dataproc Serverless, Vertex AI, BigQuery, or Cloud Workflows execution in Google Cloud. Deployment remains disabled pending explicit owner approval.
+
+## What the platform does
+
+1. **Generate and stage** reproducible synthetic training/evaluation transactions, separate anomaly truth, and immutable input references in Google Cloud Storage (GCS).
+2. **Validate and transform** the two input splits using PySpark and Spark SQL designed for Dataproc Serverless. Route invalid records into quarantine with raw payloads and reason codes.
+3. **Train and evaluate** a CPU-only scikit-learn Isolation Forest using a Vertex AI CustomJob integration. Compare rule-based, ML-based, and hybrid (rule **OR** ML) detectors using precision, recall, F1, and confusion matrices. Evaluation labels are not used for unsupervised training.
+4. **Publish** clean datasets, quality evidence, model-run metadata, and predictions to BigQuery with reconciliation, fixed job IDs, and replay-safe transaction boundaries.
+5. **Orchestrate** the bounded pilot with Google Cloud Workflows: status polling, structured failure reporting, create-only checkpoints, immutable artifact verification, and fail-closed handling of ambiguous submissions.
+
+## Cloud architecture
+
+```mermaid
+flowchart TD
+    A["Synthetic transactions + separate truth"] --> B["GCS: immutable inputs"]
+    B --> C["Dataproc Serverless: PySpark/Spark SQL validation"]
+    C --> D["Clean + quarantine + quality artifacts"]
+    D --> E["Vertex AI: CPU Isolation Forest CustomJob"]
+    E --> F["GCS: model, metrics and predictions"]
+    F --> G["BigQuery: reconciled transactional publication"]
+    H["Cloud Workflows: checkpoints, polling, recovery"] --> C
+    H --> E
+    H --> G
+```
+
+## Implementation and evidence
+
+| Layer | Implementation | Offline evidence | GCP execution |
+|---|---|---|---|
+| Original Python ML pipeline | Generator, validation, saved models, rules/ML/hybrid comparison | 164 application tests; **95.88%** coverage | No managed execution claimed |
+| GCS + Cloud Run preparation | Immutable object publication, completion-last manifest, verified image preparation | Application/CI checks; [Phase 1 evidence](docs/verification.md) | End-to-end Cloud Run Job execution not verified |
+| Dataproc + BigQuery | Spark validation/quarantine, table schemas, reconciliation and replay-safe publication | **65 feature tests**; [implementation guide](lakehouse/README.md) | Not verified |
+| Vertex AI | CPU-only CustomJob submission, sklearn model/evaluation, GCS outputs and BigQuery predictions | **62 feature tests**; **93.40%** Vertex coverage; [implementation guide](vertex/README.md) | Not verified |
+| Cloud Workflows | Two Dataproc batches, one guarded Vertex submission, artifact and publication verification | **81 feature tests**; **91.56%** orchestration coverage; [runbook](workflows/README.md) | Deployment compiler and managed run not verified |
+
+**372 tests passed** across the reported suites (164 + 65 + 62 + 81), alongside Ruff, packaging, dependency, workflow-schema and credential-pattern checks. Coverage percentages are **suite-specific**; they are not one combined repository coverage figure. The current offline tests use real local Spark and scikit-learn where stated, but mock the GCP service boundaries. CI evidence is available on the linked [Dataproc/BigQuery PR #4](https://github.com/chandrakanth02512-ctrl/ml-synthetic-data-quality/pull/4), [Vertex PR #5](https://github.com/chandrakanth02512-ctrl/ml-synthetic-data-quality/pull/5), and [Workflows PR #6](https://github.com/chandrakanth02512-ctrl/ml-synthetic-data-quality/pull/6).
+
+## Reproduce and review
+
+- **Local Python ML:** use the original installation and CLI instructions below.
+- **Dataproc/BigQuery:** see [lakehouse/README.md](lakehouse/README.md) and [lakehouse/verification.md](lakehouse/verification.md).
+- **Vertex AI:** see [vertex/README.md](vertex/README.md) and [vertex/verification.md](vertex/verification.md).
+- **Cloud Workflows:** see [workflows/README.md](workflows/README.md) and the disabled [pilot example](workflows/pilot.example.json).
+- **GCP Phase 1 / IAM:** see [docs/gcp-phase1.md](docs/gcp-phase1.md). Deployment credentials, branch/environment protections and service permissions require owner review; no static service-account keys are needed.
+
+The pipeline is deliberately a **bounded, synthetic-data pilot**, not a production fraud detector. No real customer/financial data is included. No live-cloud result, performance SLA, regional capacity reservation, or independently reviewed security approval is claimed. A future approved smoke run must prove the managed batches, Vertex job, receipts, reconciliation and final completion manifest before the project can be described as *deployed and running end-to-end on GCP*.
+
+---
+
+## Detailed reference: original Python pipeline and Cloud Run preparation
 
 A reproducible Python workflow for validating synthetic financial transactions,
 detecting statistical anomalies, and comparing an Isolation Forest with explicit rules.
@@ -41,8 +94,7 @@ table, object layout, required APIs and minimum IAM, remote build/deployment com
 256/100-row smoke test, cost-control checklist and cleanup. The proposed region is
 Mumbai (`asia-south1`), subject to current service/project compatibility checks.
 Development and tests run in hosted Codex Cloud; future managed executions run on GCP.
-**No GCP resources have been created or jobs executed.** Billing/spending controls and
-explicit approval are required before any live provisioning, build or execution.
+**No full managed GCP pipeline execution has been verified.** Previous owner-reviewed build and source evidence exists, but Dataproc, Vertex, BigQuery and Workflows managed execution still requires separately approved setup and smoke testing. Billing/spending controls and explicit approval are required before any new live provisioning or workload.
 
 [Verification evidence](docs/verification.md) distinguishes hosted-Codex checks from
 unverified live GCP behavior. GitHub Actions runs credential-free tests, Ruff checks,
@@ -443,12 +495,13 @@ seed provides limited statistical evidence. Synthetic injection truth is not
 expert-reviewed fraud truth. The low Isolation Forest recall remains an explicit
 model limitation, not an unresolved execution error.
 
-Planned, **not implemented**: separate calibration and holdout splits; repeated-seed
+Still outside the bounded pilot: separate calibration and holdout splits; repeated-seed
 evaluation; controlled feature ablations and threshold analysis; realistic temporal
 and customer histories with past-only frequency windows; drift/monitoring;
-MLflow experiment tracking; automated deployment; and larger-scale PySpark and
-advanced SQL workflows. Dataproc, BigQuery, Vertex AI and Cloud Workflows are outside
-this phase. Credential-free CI is implemented; deployment remains manual and gated.
+MLflow experiment tracking; automated continuous deployment; and production-scale performance testing.
+Dataproc, BigQuery, Vertex AI and Cloud Workflows **integration code is implemented** in the linked
+feature PRs, but managed GCP execution remains unverified. Credential-free CI is
+implemented; live deployment and dispatch remain manual and gated.
 
 ## Review and publication
 

@@ -1,0 +1,3 @@
+# Publication SDK needs python-dateutil<3; original model packages stay pinned.
+google-cloud-bigquery==3.38.0
+python-dateutil==2.9.0.post0

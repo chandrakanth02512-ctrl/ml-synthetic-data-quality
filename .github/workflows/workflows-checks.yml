@@ -1,0 +1,45 @@
+name: Offline orchestration checks
+on:
+  push:
+    branches: ['feat/cloud-workflows']
+  pull_request:
+    paths:
+      - 'src/synthetic_quality_workflows/**'
+      - 'tests_workflows/**'
+      - 'tools/workflow_assets.py'
+      - 'workflows/**'
+      - '.github/workflows/workflows-checks.yml'
+permissions:
+  contents: read
+jobs:
+  workflows-and-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SPARK_LOCAL_IP: 127.0.0.1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Select Java 21
+        run: |
+          test -x "$JAVA_HOME_21_X64/bin/java"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_21_X64" >> "$GITHUB_PATH"
+      - name: Install existing isolated feature dependencies
+        run: |
+          python -m pip install -e '.[dev]' -r requirements-lakehouse.txt
+          python -m pip check
+      - name: Workflows YAML, recovery and actual local pipeline
+        run: python -m pytest -c tests_workflows/pytest.ini tests_workflows --cov=synthetic_quality_workflows --cov-report=term-missing
+      - name: Vertex regressions
+        run: python -m pytest -c tests_vertex/pytest.ini tests_vertex -q
+      - name: Dataproc and BigQuery regressions
+        run: python -m pytest -c tests_lakehouse/pytest.ini tests_lakehouse -q
+      - name: Lint and format
+        run: |
+          python -m ruff check src tests tests_lakehouse tests_vertex tests_workflows tools jobs
+          python -m ruff format --check src tests tests_lakehouse tests_vertex tests_workflows tools jobs
