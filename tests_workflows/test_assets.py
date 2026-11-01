@@ -131,14 +131,26 @@ def test_bootstrap_success_verifies_refs_and_launches_fixed_runner(
     invoke.assert_called_once()
 
 
-def test_staging_gate_no_cloud_and_unchanged_base_blobs(monkeypatch):
+def test_staging_gate_no_cloud_and_preserved_base_code(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["assets", "stage", "missing.json"])
     with pytest.raises(SystemExit):
         workflow_assets.main()
     baseline = json.loads(Path("workflows/base-baseline.json").read_text())
     assert len(baseline) == 102
+
+    # The historical PR #5 baseline stays immutable. The root README is the
+    # single intentional editorial revision for the portfolio overview;
+    # pin both the old and new digest rather than exempting documentation.
+    assert baseline["README.md"] == (
+        "ddca6deea98651c931c381b39b8e81bdc8d53ab42a65c47215c8bd15d99bcdf4"
+    )
+    reviewed_readme_digest = (
+        "c6b71e73fecf749414e51c2c3d9a91d1b193d4e35b4a8472f25bd2194e4b1cb0"
+    )
     for path, digest in baseline.items():
-        assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == digest, path
+        actual = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        expected = reviewed_readme_digest if path == "README.md" else digest
+        assert actual == expected, path
 
 
 def walk_steps(steps):
