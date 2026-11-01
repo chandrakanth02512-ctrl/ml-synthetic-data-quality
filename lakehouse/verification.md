@@ -1,18 +1,18 @@
 # Offline verification and managed-execution limits
 
-Verified in Codex Cloud on 31 October 2026, Python 3.12.14, Java 21,
+Verified in Codex Cloud on 1 November 2026, Python 3.12.14, Java 21,
 PySpark 4.0.1. Main and PRs #2/#3 are preserved. No live GCP operation,
 resource/IAM/protection change, build, batch or workload execution was performed.
 
 | Check | Observed result |
 |---|---|
-| Feature suite, actual local Spark + offline SDK boundaries | **62 passed** |
+| Feature suite, actual local Spark + offline SDK boundaries | **65 passed** |
 | Original application regression suite | **164 passed; 95.88% coverage** |
 | Existing application files | **46 original Git blob hashes unchanged** |
 | Spark pilot fixture | **256 source, 252 clean, 4 quarantined, 12 quality rows, 256 ledger rows** |
 | Reconciliation SQL relational logic | Executed in DuckDB after GoogleSQL dialect translation: missing/extra/duplicate rows, changed payload hash, amount and disposition detected |
-| GoogleSQL syntax checks | Explicit schemas/DDL and publication/reconciliation statements parsed with sqlglot's BigQuery dialect; this is not BigQuery service validation |
-| Dependency consistency | All **48** installed packages compatible in the isolated feature environment |
+| GoogleSQL syntax checks | Complete procedural publication script parsed with SQLFluff's BigQuery dialect; three broken nested/control/commit variants rejected. DDL uses strict SQLGlot parsing; this is not BigQuery service validation |
+| Dependency consistency | Installed packages compatible in the isolated feature environment |
 | Ruff lint/format | Passed for new package, tests, tools and driver |
 | Packaging | Deterministic code-only ZIP imports and hashes successfully without site packages; existing destinations refused |
 | Credential/private-file checks | Only allowlisted new source/tests/SQL/schema/docs/CI files selected; no credentials, receipts, generated datasets, models or archives committed |

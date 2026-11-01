@@ -7,6 +7,9 @@ import pytest
 import sqlglot
 from google.api_core.exceptions import Conflict, NotFound
 from google.cloud import bigquery as bq
+from sqlfluff import parse as parse_google_sql
+from sqlfluff.api.simple import APIParsingError
+from sqlglot.errors import ErrorLevel
 
 from synthetic_quality_lakehouse import bigquery as loader
 from synthetic_quality_lakehouse.schemas import TABLES, ddl
@@ -166,16 +169,43 @@ def test_conflict_reconciles_existing_job_without_duplicate_submission():
     submit.assert_called_once()
 
 
-def test_bigquery_ddl_and_publication_parse_in_bigquery_dialect():
+@pytest.fixture
+def publication_sql():
     stages = {
         k: "offline-project.pilot.stg_" + k for k in ("clean", "quarantine", "quality", "ledger")
     }
-    query = loader.render_sql("offline-project.pilot", stages)
-    statements = sqlglot.parse(query, read="bigquery", error_level="RAISE")
-    assert statements and "BEGIN TRANSACTION" in query and "COMMIT TRANSACTION" in query
-    assert "ASSERT" in query and "IF NOT EXISTS" in query
-    assert not any(s in query for s in ("DELETE FROM", "TRUNCATE", "DROP TABLE"))
-    assert len(sqlglot.parse(ddl("offline-project.pilot"), read="bigquery")) == 4
+    return loader.render_sql("offline-project.pilot", stages)
+
+
+def test_bigquery_ddl_and_complete_procedural_publication_parse(publication_sql):
+    # SQLGlot does not fully support procedural ASSERT/IF blocks. SQLFluff raises
+    # APIParsingError for any unparsable segment rather than accepting a partial tree.
+    assert parse_google_sql(publication_sql, dialect="bigquery")["file"]
+    assert "BEGIN TRANSACTION" in publication_sql and "COMMIT TRANSACTION" in publication_sql
+    assert "ASSERT" in publication_sql and "IF NOT EXISTS" in publication_sql
+    assert not any(s in publication_sql for s in ("DELETE FROM", "TRUNCATE", "DROP TABLE"))
+    assert (
+        len(
+            sqlglot.parse(
+                ddl("offline-project.pilot"), read="bigquery", error_level=ErrorLevel.RAISE
+            )
+        )
+        == 4
+    )
+
+
+@pytest.mark.parametrize(
+    "valid,invalid",
+    [
+        ("END IF;", ""),
+        ("COMMIT TRANSACTION;", "COMMIT BANANA;"),
+        ("SELECT * FROM `offline-project.pilot.stg_clean`", "SELECT FROM"),
+    ],
+)
+def test_full_script_parser_rejects_broken_procedural_statements(publication_sql, valid, invalid):
+    assert valid in publication_sql
+    with pytest.raises(APIParsingError):
+        parse_google_sql(publication_sql.replace(valid, invalid), dialect="bigquery")
 
 
 @pytest.mark.parametrize(
