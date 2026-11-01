@@ -1,0 +1,39 @@
+{
+  "format_version": 1,
+  "enabled": false,
+  "run_id": "workflow-smoke-001",
+  "training": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/inputs/training.ndjson",
+    "generation": 0,
+    "sha256": "REVIEWED_INPUT_SHA256"
+  },
+  "evaluation": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/inputs/evaluation.ndjson",
+    "generation": 0,
+    "sha256": "REVIEWED_INPUT_SHA256"
+  },
+  "truth": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/inputs/truth.ndjson",
+    "generation": 0,
+    "sha256": "REVIEWED_INPUT_SHA256"
+  },
+  "package": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/STAGED_BY_TOOL.zip",
+    "generation": 1,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "bootstrap": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/STAGED_BY_TOOL.py",
+    "generation": 1,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "runtime_image": "asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality-workflows@sha256:REVIEWED_RUNTIME_DIGEST",
+  "subnetwork": "projects/gcp-intelligent-data-quality/regions/asia-south1/subnetworks/REVIEWED_SUBNET",
+  "dataset": "synthetic_quality_lakehouse",
+  "training_rows": 256,
+  "evaluation_rows": 100,
+  "max_quarantined_rows": 1,
+  "poll_seconds": 10,
+  "poll_limit": 90,
+  "revision": "REVIEWED_WORKFLOWS_COMMIT"
+}

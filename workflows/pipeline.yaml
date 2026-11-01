@@ -1,0 +1,540 @@
+# Render this disabled template with tools/workflow_assets.py; never dispatch directly.
+main:
+  params: [args]
+  steps:
+    - initialize:
+        assign:
+          - p: {enabled: false}
+          - execution_id: ${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+    - authorize:
+        switch:
+          - condition: ${not p.enabled}
+            raise: {category: DISABLED}
+          - condition: ${map.get(args, "confirm") != "RUN " + p.run_id}
+            raise: {category: APPROVAL_REQUIRED}
+          - condition: ${not (map.get(args, "mode") in ["start", "resume"])}
+            raise: {category: INVALID_MODE}
+    - execute:
+        try:
+          call: pipeline
+          args:
+            p: ${p}
+            execution_id: ${execution_id}
+            mode: ${args.mode}
+          result: completed
+        except:
+          as: failure
+          steps:
+            - classify:
+                assign:
+                  - safe:
+                      category: ${default(map.get(failure, "category"), "CONTROL_PLANE_ERROR")}
+                      http_code: ${map.get(failure, "code")}
+                      stage: ${map.get(failure, "stage")}
+                      state: ${map.get(failure, "state")}
+                      execution_id: ${execution_id}
+                      run_id: ${p.run_id}
+                      plan_hash: ${p.plan_hash}
+                      status: STOPPED
+            - failure_log:
+                call: sys.log
+                args: {json: '${safe}', severity: ERROR}
+            - preserve_failure:
+                try:
+                  call: checkpoint
+                  args:
+                    p: ${p}
+                    path: ${"executions/" + execution_id + "/failure.json"}
+                    document: ${safe}
+                  result: unused
+                except:
+                  as: checkpoint_error
+                  steps:
+                    - log_failed_checkpoint:
+                        call: sys.log
+                        args:
+                          json: {category: FAILURE_CHECKPOINT_UNAVAILABLE, execution_id: '${execution_id}'}
+                          severity: ERROR
+            - stop:
+                raise: ${safe}
+    - done:
+        return: ${completed}
+
+pipeline:
+  params: [p, execution_id, mode]
+  steps:
+    - start_log:
+        call: sys.log
+        args:
+          json: {event: START, execution_id: '${execution_id}', run_id: '${p.run_id}', plan_hash: '${p.plan_hash}'}
+          severity: INFO
+    - check_objects:
+        for:
+          value: object
+          in: ${p.objects}
+          steps:
+            - metadata:
+                call: get
+                args: {url: '${object.url}', query: {generation: '${object.generation}'}}
+                result: meta
+            - metadata_gate:
+                switch:
+                  - condition: ${meta.body.generation != object.generation or int(meta.body.size) > object.max_size}
+                    raise: {category: INPUT_VALIDATION_FAILED}
+    - bootstrap_content:
+        call: get
+        args:
+          url: ${p.bootstrap_url}
+          query: {alt: media, generation: '${p.bootstrap_generation}'}
+        result: bootstrap_response
+    - bootstrap_bytes:
+        call: as_bytes
+        args: {body: '${bootstrap_response.body}'}
+        result: bootstrap_data
+    - bootstrap_gate:
+        switch:
+          - condition: ${base64.encode(hash.compute_checksum(bootstrap_data, "SHA256")) != p.bootstrap_hash}
+            raise: {category: BOOTSTRAP_HASH_MISMATCH}
+    - stage_variables:
+        assign:
+          - job: null
+          - result: null
+          - terminal: null
+          - unused: null
+    - stages:
+        for:
+          value: stage
+          in: ${p.stages}
+          steps:
+            - stage_start:
+                call: sys.log
+                args:
+                  json: {event: STAGE_START, stage: '${stage.id}', run_id: '${p.run_id}', execution_id: '${execution_id}'}
+                  severity: INFO
+            - reconcile_and_run:
+                call: workload
+                args: {p: '${p}', stage: '${stage}', execution_id: '${execution_id}', mode: '${mode}'}
+                result: job
+            - poll:
+                call: wait_for_job
+                args: {p: '${p}', stage: '${stage}', job: '${job}'}
+                result: terminal
+            - verify_result:
+                call: read_json
+                args: {url: '${stage.result_url}'}
+                result: result
+            - result_gate:
+                switch:
+                  - condition: ${result.document.status != "COMPLETE"}
+                    raise: {category: ARTIFACT_VERIFICATION_FAILED}
+            - stage_checkpoint:
+                call: checkpoint
+                args:
+                  p: ${p}
+                  path: ${stage.id + "/succeeded.json"}
+                  document:
+                    plan_hash: ${p.plan_hash}
+                    name: ${job.name}
+                    result_generation: ${result.generation}
+                result: unused
+    - final_gate:
+        switch:
+          - condition: ${result.document.format_version != 1 or len(result.document.verified_objects) != 17 or result.document.training_rows != p.training_rows or result.document.evaluation_rows != p.evaluation_rows}
+            raise: {category: FINAL_REPORT_CONTRACT_FAILED}
+          - condition: ${not text.match_regex(result.document.model_sha256, "^[0-9a-f]{64}$")}
+            raise: {category: MODEL_IDENTITY_MISSING}
+          - condition: ${result.document.plan_hash != p.plan_hash or result.document.run_id != p.run_id or result.document.artifacts_verified != true or result.document.reconciled != true}
+            raise: {category: FINAL_RECONCILIATION_FAILED}
+          - condition: ${result.document.publications.training.status != "PUBLISHED" or result.document.publications.evaluation.status != "PUBLISHED" or result.document.publications.predictions.status != "PUBLISHED"}
+            raise: {category: BIGQUERY_PUBLICATION_FAILED}
+    - verify_current_artifact_generations:
+        for:
+          value: artifact
+          in: ${result.document.verified_objects}
+          steps:
+            - artifact_uri:
+                switch:
+                  - condition: ${not text.match_regex(artifact.uri, "^gs://synthetic-quality-984592102391-data-as1/lakehouse/")}
+                    raise: {category: ARTIFACT_NAMESPACE_CONFLICT}
+            - artifact_metadata:
+                call: get
+                args:
+                  url: ${"https://storage.googleapis.com/storage/v1/b/" + p.bucket + "/o/" + text.url_encode(text.substring(artifact.uri, len("gs://" + p.bucket + "/"), len(artifact.uri)))}
+                  query: {}
+                result: artifact_meta
+            - immutable_generation:
+                switch:
+                  - condition: ${int(artifact_meta.body.generation) != artifact.generation}
+                    raise: {category: ARTIFACT_GENERATION_CHANGED}
+    - complete_checkpoint:
+        call: checkpoint
+        args:
+          p: ${p}
+          path: workflow-complete.json
+          document: {plan_hash: '${p.plan_hash}', status: COMPLETE, result_generation: '${result.generation}'}
+        result: unused
+    - complete_log:
+        call: sys.log
+        args:
+          json: {event: COMPLETE, execution_id: '${execution_id}', run_id: '${p.run_id}', plan_hash: '${p.plan_hash}'}
+          severity: INFO
+    - completed:
+        return:
+          status: COMPLETE
+          run_id: ${p.run_id}
+          execution_id: ${execution_id}
+          plan_hash: ${p.plan_hash}
+          report: ${result.document}
+
+workload:
+  params: [p, stage, execution_id, mode]
+  steps:
+    - reservation:
+        call: checkpoint
+        args:
+          p: ${p}
+          path: ${stage.id + "/attempt.json"}
+          document: {plan_hash: '${p.plan_hash}', spec: '${stage.spec}', owner_execution: '${execution_id}'}
+        result: claim
+    - duplicate_gate:
+        switch:
+          - condition: ${not claim.owner and mode != "resume"}
+            raise: {category: DUPLICATE_REQUEST}
+    - locate:
+        call: find_job
+        args: {stage: '${stage}', p: '${p}'}
+        result: job
+    - create_gate:
+        switch:
+          - condition: ${job == null and not claim.owner}
+            raise: {category: AMBIGUOUS_SUBMISSION_MANUAL_REVIEW}
+          - condition: ${job == null}
+            steps:
+              - create_once:
+                  try:
+                    call: http.post
+                    args:
+                      url: ${stage.collection}
+                      query: ${stage.query}
+                      auth: {type: OAuth2}
+                      timeout: 60
+                      body: ${stage.spec}
+                    result: response
+                  except:
+                    as: submission_error
+                    steps:
+                      - rejected:
+                          switch:
+                            - condition: ${map.get(submission_error, "code") in [400, 401, 403, 404, 409, 422, 429]}
+                              steps:
+                                - rejection_details:
+                                    assign:
+                                      - rejection:
+                                          category: WORKLOAD_SUBMISSION_REJECTED
+                                          code: ${submission_error.code}
+                                          stage: ${stage.id}
+                                - stop_rejected:
+                                    raise: ${rejection}
+                      - ambiguous:
+                          raise: {category: AMBIGUOUS_SUBMISSION_MANUAL_REVIEW}
+              - locate_created:
+                  call: find_job
+                  args: {stage: '${stage}', p: '${p}'}
+                  result: job
+    - require_job:
+        switch:
+          - condition: ${job == null}
+            raise: {category: AMBIGUOUS_SUBMISSION_MANUAL_REVIEW}
+    - validate:
+        call: validate_job
+        args: {job: '${job}', stage: '${stage}'}
+    - receipt:
+        call: checkpoint
+        args:
+          p: ${p}
+          path: ${stage.id + "/receipt.json"}
+          document: {plan_hash: '${p.plan_hash}', name: '${job.name}'}
+        result: unused
+    - found:
+        return: ${job}
+
+find_job:
+  params: [stage, p]
+  steps:
+    - dataproc:
+        switch:
+          - condition: ${stage.kind == "dataproc"}
+            steps:
+              - get_batch:
+                  try:
+                    call: get
+                    args: {url: '${"https://dataproc.googleapis.com/v1/" + stage.name}', query: {}}
+                    result: response
+                  except:
+                    as: error
+                    steps:
+                      - missing:
+                          switch:
+                            - condition: ${map.get(error, "code") == 404}
+                              return: null
+                      - denied:
+                          raise: ${error}
+              - batch:
+                  return: ${response.body}
+    - inventory:
+        assign:
+          - token: ""
+          - matches: []
+          - pages: 0
+    - page:
+        call: get
+        args:
+          url: ${stage.collection}
+          query:
+            filter: ${"labels.request_sha=\"" + text.substring(p.plan_hash, 0, 40) + "\""}
+            pageSize: 100
+            pageToken: ${token}
+        result: response
+    - collect_jobs:
+        for:
+          value: candidate
+          in: ${default(map.get(response.body, "customJobs"), [])}
+          steps:
+            - append:
+                assign:
+                  - matches: ${list.concat(matches, candidate)}
+    - collect:
+        assign:
+          - token: ${default(map.get(response.body, "nextPageToken"), "")}
+          - pages: ${pages + 1}
+    - pagination:
+        switch:
+          - condition: ${token != "" and pages < 10}
+            next: page
+          - condition: ${token != "" or len(matches) > 1}
+            raise: {category: AMBIGUOUS_VERTEX_INVENTORY}
+          - condition: ${len(matches) == 0}
+            return: null
+    - unique:
+        return: ${matches[0]}
+
+validate_job:
+  params: [job, stage]
+  steps:
+    - spec_matches:
+        call: includes
+        args: {actual: '${job}', expected: '${stage.spec}'}
+        result: valid
+    - dataproc_payload:
+        switch:
+          - condition: ${stage.kind == "dataproc"}
+            steps:
+              - no_extra_spark_inputs:
+                  call: includes
+                  args: {actual: '${stage.spec.pysparkBatch}', expected: '${job.pysparkBatch}'}
+                  result: exact_inputs
+              - reject_extra_inputs:
+                  switch:
+                    - condition: ${not exact_inputs or map.get(job.runtimeConfig, "containerImage") != null or map.get(job, "sparkBatch") != null or map.get(job, "sparkRBatch") != null or map.get(job, "sparkSqlBatch") != null}
+                      raise: {category: WORKLOAD_REQUEST_CONFLICT}
+    - exact_request:
+        switch:
+          - condition: ${not valid}
+            raise: {category: WORKLOAD_REQUEST_CONFLICT}
+          - condition: ${stage.kind == "dataproc" and job.name != stage.name}
+            raise: {category: WORKLOAD_IDENTITY_CONFLICT}
+          - condition: ${stage.kind == "vertex"}
+            steps:
+              - restricted_vertex:
+                  switch:
+                    - condition: ${not text.match_regex(job.name, "^projects/gcp-intelligent-data-quality/locations/asia-south1/customJobs/[0-9]+$")}
+                      raise: {category: WORKLOAD_IDENTITY_CONFLICT}
+                    - condition: ${default(map.get(job.jobSpec.workerPoolSpecs[0].machineSpec, "acceleratorCount"), 0) != 0 or default(map.get(job.jobSpec.workerPoolSpecs[0].machineSpec, "acceleratorType"), "ACCELERATOR_TYPE_UNSPECIFIED") != "ACCELERATOR_TYPE_UNSPECIFIED"}
+                      raise: {category: UNEXPECTED_ACCELERATOR}
+                    - condition: ${map.get(job.jobSpec, "network") != null or map.get(job.jobSpec, "persistentResourceId") != null or default(map.get(job.jobSpec, "enableWebAccess"), false) or default(map.get(job.jobSpec, "enableDashboardAccess"), false) or map.get(job.jobSpec, "tensorboard") != null}
+                      raise: {category: UNEXPECTED_VERTEX_ACCESS}
+    - checked:
+        return: true
+
+includes:
+  params: [actual, expected]
+  steps:
+    - maps:
+        switch:
+          - condition: ${get_type(expected) == "map"}
+            steps:
+              - require_map:
+                  switch:
+                    - condition: ${get_type(actual) != "map"}
+                      return: false
+              - entries:
+                  for:
+                    value: key
+                    in: ${keys(expected)}
+                    steps:
+                      - default_false:
+                          switch:
+                            - condition: ${not (key in actual) and expected[key] == false}
+                              next: continue
+                            - condition: ${not (key in actual)}
+                              return: false
+                      - nested:
+                          call: includes
+                          args: {actual: '${actual[key]}', expected: '${expected[key]}'}
+                          result: valid
+                      - mismatch:
+                          switch:
+                            - condition: ${not valid}
+                              return: false
+              - map_matches:
+                  return: true
+          - condition: ${get_type(expected) == "list"}
+            steps:
+              - require_list:
+                  switch:
+                    - condition: ${get_type(actual) != "list" or len(actual) != len(expected)}
+                      return: false
+              - empty_list:
+                  switch:
+                    - condition: ${len(expected) == 0}
+                      return: true
+              - items:
+                  for:
+                    value: index
+                    range: ${[0, len(expected) - 1]}
+                    steps:
+                      - nested_item:
+                          call: includes
+                          args: {actual: '${actual[index]}', expected: '${expected[index]}'}
+                          result: valid
+                      - item_mismatch:
+                          switch:
+                            - condition: ${not valid}
+                              return: false
+              - list_matches:
+                  return: true
+    - scalar:
+        return: ${actual == expected}
+
+wait_for_job:
+  params: [p, stage, job]
+  steps:
+    - initialize:
+        assign:
+          - deadline: ${sys.now() + p.poll_seconds * p.poll_limit}
+    - fetch:
+        call: get
+        args:
+          url: ${if(stage.kind == "dataproc", "https://dataproc.googleapis.com/v1/", "https://asia-south1-aiplatform.googleapis.com/v1/") + job.name}
+          query: {}
+        result: response
+    - validate:
+        call: validate_job
+        args: {job: '${response.body}', stage: '${stage}'}
+    - state:
+        switch:
+          - condition: ${response.body.state in ["SUCCEEDED", "JOB_STATE_SUCCEEDED"]}
+            return: ${response.body}
+          - condition: ${response.body.state in ["FAILED", "CANCELLED", "CANCELLING", "JOB_STATE_FAILED", "JOB_STATE_CANCELLED", "JOB_STATE_CANCELLING", "JOB_STATE_EXPIRED", "JOB_STATE_PARTIALLY_SUCCEEDED"]}
+            raise: {category: WORKLOAD_FAILED, stage: '${stage.id}', state: '${response.body.state}'}
+          - condition: ${not (response.body.state in ["PENDING", "RUNNING", "JOB_STATE_QUEUED", "JOB_STATE_PENDING", "JOB_STATE_RUNNING", "JOB_STATE_UPDATING"])}
+            raise: {category: UNKNOWN_WORKLOAD_STATE, stage: '${stage.id}'}
+          - condition: ${sys.now() >= deadline}
+            raise: {category: POLL_TIMEOUT, stage: '${stage.id}'}
+    - pause:
+        call: sys.sleep
+        args: {seconds: '${p.poll_seconds}'}
+        next: fetch
+
+get:
+  params: [url, query]
+  steps:
+    - request:
+        try:
+          call: http.get
+          args:
+            url: ${url}
+            query: ${query}
+            auth: {type: OAuth2}
+            timeout: 30
+          result: response
+        retry:
+          predicate: ${http.default_retry_predicate}
+          max_retries: 3
+          backoff: {initial_delay: 1, max_delay: 8, multiplier: 2}
+    - response:
+        return: ${response}
+
+read_json:
+  params: [url]
+  steps:
+    - metadata:
+        call: get
+        args: {url: '${url}', query: {}}
+        result: meta
+    - size:
+        switch:
+          - condition: ${int(meta.body.size) > 65536}
+            raise: {category: OVERSIZED_CHECKPOINT}
+    - content:
+        call: get
+        args: {url: '${url}', query: {alt: media, generation: '${meta.body.generation}'}}
+        result: response
+    - decode:
+        switch:
+          - condition: ${get_type(response.body) == "map"}
+            return: {document: '${response.body}', generation: '${meta.body.generation}'}
+    - decoded:
+        return: {document: '${json.decode(response.body)}', generation: '${meta.body.generation}'}
+
+as_bytes:
+  params: [body]
+  steps:
+    - already_bytes:
+        switch:
+          - condition: ${get_type(body) == "bytes"}
+            return: ${body}
+    - encoded:
+        return: ${text.encode(body)}
+
+checkpoint:
+  params: [p, path, document]
+  steps:
+    - create_only:
+        try:
+          call: http.post
+          args:
+            url: ${"https://storage.googleapis.com/upload/storage/v1/b/" + p.bucket + "/o"}
+            query: {uploadType: media, name: '${p.prefix + "/" + path}', ifGenerationMatch: 0}
+            headers: {Content-Type: application/json}
+            auth: {type: OAuth2}
+            timeout: 30
+            body: ${document}
+          result: stored
+        except:
+          as: error
+          steps:
+            - conflict:
+                switch:
+                  - condition: ${map.get(error, "code") != 412}
+                    raise: {category: CHECKPOINT_AMBIGUOUS_MANUAL_REVIEW}
+            - read_existing:
+                call: read_json
+                args:
+                  url: ${"https://storage.googleapis.com/storage/v1/b/" + p.bucket + "/o/" + text.url_encode(p.prefix + "/" + path)}
+                result: existing
+            - comparable:
+                assign:
+                  - expected: ${map.delete(document, "owner_execution")}
+            - validate_existing:
+                call: includes
+                args: {actual: '${existing.document}', expected: '${expected}'}
+                result: valid
+            - conflict_gate:
+                switch:
+                  - condition: ${not valid}
+                    raise: {category: CHECKPOINT_CONFLICT}
+            - existing:
+                return: {owner: false}
+    - owned:
+        return: {owner: true}
