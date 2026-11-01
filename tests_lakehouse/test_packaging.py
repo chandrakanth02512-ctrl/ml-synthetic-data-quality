@@ -80,9 +80,10 @@ def test_original_code_preserved_with_pinned_portfolio_readme_revision():
     assert len(baseline["files"]) == 46
     old_readme_sha = "002828ed3a3ea82dffdfae27e344d89c9beb485a"
     reviewed_readme_sha = "b8f8cc6410a0f89470c630eb5a5bea34747f3908"
-    assert next(x for x in baseline["files"] if x["path"] == "README.md")[
-        "git_blob_sha"
-    ] == old_readme_sha
+    assert (
+        next(x for x in baseline["files"] if x["path"] == "README.md")["git_blob_sha"]
+        == old_readme_sha
+    )
     for entry in baseline["files"]:
         data = (ROOT / entry["path"]).read_bytes()
         actual = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
