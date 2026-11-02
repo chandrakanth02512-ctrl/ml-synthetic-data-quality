@@ -10,6 +10,27 @@ publication-only recovery populated all six BigQuery tables. **The previous
 Cloud Workflows executions and Vertex CustomJobs remain FAILED.** A successful
 complete Workflows execution has not been demonstrated.
 
+## Browse the inputs and outputs
+
+Start with the [10-record walkthrough](examples/README.md). These are small
+exports from the verified cloud artifacts, with matching transaction IDs across
+inputs, cleaned data and predictions.
+
+| Example | What to expect |
+|---|---|
+| [Input transactions](examples/input_transactions.csv) | 10 synthetic records; no truth labels in model inputs |
+| [Cleaned output](examples/cleaned_transactions.csv) | The same 10 records with normalized timestamps, USD amounts and dates |
+| [Quality results](examples/data_quality_results.csv) | All 12 checks for the full 100-row evaluation split; zero failures |
+| [Validation summary](examples/validation_summary.json) | Source counts, sample bounds and export consistency checks |
+| [Anomaly predictions](examples/anomaly_predictions.csv) | 10 saved scores, rules/ML/combined flags and evaluation truth |
+| [Actual evaluation metrics](examples/evaluation.json) | Full 100-row metrics and confusion matrices |
+| [Source provenance](examples/provenance.json) | Pinned generations, hashes, selected IDs and exported columns |
+
+The sample deliberately includes detector mistakes, so it overrepresents
+anomalies. The published metrics describe the full evaluation split, not these
+10 rows. See [verified cloud results](docs/cloud-pilot-results.md) for publication
+receipts and the limits of the recovery evidence.
+
 ## Verified GCP results
 
 Project: `gcp-intelligent-data-quality` · Region: `asia-south1`
@@ -146,8 +167,9 @@ python -m ruff format --check src tests tests_lakehouse tests_vertex tests_workf
 ```
 
 GitHub Actions runs credential-free checks. CI success does not deploy or execute
-GCP workloads. Generated data, model binaries, credentials, temporary reports and
-private cloud logs are excluded from Git.
+GCP workloads. Bulk generated data, model binaries, credentials, temporary reports and
+private cloud logs are excluded from Git. The small reviewed `examples/` exports
+are intentionally included for browsing.
 
 ## Guides
 

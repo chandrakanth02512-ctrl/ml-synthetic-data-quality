@@ -150,8 +150,8 @@ def test_pr4_code_preserved_with_pinned_portfolio_readme_revision():
     old_readme_sha = "002828ed3a3ea82dffdfae27e344d89c9beb485a"
     reviewed_blobs = {
         "src/synthetic_quality_lakehouse/bigquery.py": "4d1d4739ed2964f68e2133a3814d32428b4fee79",
-        "README.md": "9f4d0d27692df51b1416d8d36f1f41df02b7a3d0",
-        "tests_lakehouse/test_packaging.py": "918de6ae0cc308677d4423b3f01a96cbe01755b8",
+        "README.md": "e256458274f7f5d20132f0828d02845fc95c2edc",
+        "tests_lakehouse/test_packaging.py": "bef048cd0b9ecbbcda2dbf34c03f86e66c2c63b5",
     }
     assert (
         next(x for x in baseline["files"] if x["path"] == "README.md")["git_blob_sha"]

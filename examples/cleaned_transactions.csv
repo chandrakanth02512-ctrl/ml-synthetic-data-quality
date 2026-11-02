@@ -1,0 +1,11 @@
+transaction_id,customer_id,timestamp,transaction_amount,currency,country,merchant_category,transaction_amount_usd,transaction_date
+evaluation_123_0000000,evaluation_C0025,2025-02-26T12:29:03.000Z,12.65,GBP,GB,retail,15.8125,2025-02-26
+evaluation_123_0000001,evaluation_C0001,2025-02-22T10:33:27.000Z,78.34,USD,US,dining,78.34,2025-02-22
+evaluation_123_0000005,evaluation_C0390,2025-02-24T04:25:19.000Z,28.7,EUR,DE,transport,31.888888888888886,2025-02-24
+evaluation_123_0000006,evaluation_C0103,2025-02-20T11:26:23.000Z,1069.9,INR,IN,dining,13.373750000000001,2025-02-20
+evaluation_123_0000010,evaluation_C0021,2025-02-20T08:27:30.000Z,2492.39,GBP,GB,entertainment,3115.4874999999997,2025-02-20
+evaluation_123_0000016,evaluation_C0135,2025-02-10T11:16:47.000Z,364.76,INR,IN,groceries,4.5595,2025-02-10
+evaluation_123_0000028,evaluation_C0313,2025-02-13T18:59:21.000Z,4161.49,INR,IN,transport,52.018625,2025-02-13
+evaluation_123_0000073,evaluation_C0344,2025-02-03T15:56:06.000Z,2606.78,GBP,GB,groceries,3258.475,2025-02-03
+evaluation_123_0000079,evaluation_C0221,2025-02-13T19:17:09.000Z,2475.07,USD,US,utilities,2475.07,2025-02-13
+evaluation_123_0000080,evaluation_C0405,2025-02-20T04:24:35.000Z,130.36,USD,US,dining,130.36,2025-02-20

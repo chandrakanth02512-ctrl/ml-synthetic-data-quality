@@ -147,9 +147,9 @@ def test_staging_gate_no_cloud_and_preserved_base_code(monkeypatch):
     reviewed_blobs = {
         "src/synthetic_quality_lakehouse/bigquery.py": "4d1d4739ed2964f68e2133a3814d32428b4fee79",
         "src/synthetic_quality_vertex/predictions.py": "320817d53f84cf869d070527f12842429b1a318e",
-        "README.md": "9f4d0d27692df51b1416d8d36f1f41df02b7a3d0",
-        "tests_lakehouse/test_packaging.py": "918de6ae0cc308677d4423b3f01a96cbe01755b8",
-        "tests_vertex/test_packaging.py": "d68706b619ca83faa6c1f115236c567e3ce2b8b1",
+        "README.md": "e256458274f7f5d20132f0828d02845fc95c2edc",
+        "tests_lakehouse/test_packaging.py": "bef048cd0b9ecbbcda2dbf34c03f86e66c2c63b5",
+        "tests_vertex/test_packaging.py": "2b2ca183ddbe70dcd30258c8e04292968c4f8ac5",
     }
     for path, digest in baseline.items():
         data = Path(path).read_bytes()

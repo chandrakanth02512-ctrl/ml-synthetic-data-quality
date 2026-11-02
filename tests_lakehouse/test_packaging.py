@@ -79,7 +79,7 @@ def test_original_code_preserved_with_pinned_portfolio_readme_revision():
     baseline = json.loads((ROOT / "lakehouse/application-baseline.json").read_text())
     assert len(baseline["files"]) == 46
     old_readme_sha = "002828ed3a3ea82dffdfae27e344d89c9beb485a"
-    reviewed_readme_sha = "9f4d0d27692df51b1416d8d36f1f41df02b7a3d0"
+    reviewed_readme_sha = "e256458274f7f5d20132f0828d02845fc95c2edc"
     assert (
         next(x for x in baseline["files"] if x["path"] == "README.md")["git_blob_sha"]
         == old_readme_sha

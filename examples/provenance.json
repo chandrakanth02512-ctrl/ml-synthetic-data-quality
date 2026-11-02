@@ -1,0 +1,139 @@
+{
+  "evidence_type": "VERIFIED CLOUD ARTIFACT EXPORT",
+  "source_run_id": "workflow-smoke-002",
+  "verified_export_date": "2026-11-02",
+  "project": "gcp-intelligent-data-quality",
+  "region": "asia-south1",
+  "notes": [
+    "Inputs and outputs are synthetic. No customer data or model binary is included.",
+    "CSV files are selected rows/columns from generation- and SHA-256-verified GCS artifacts. CSV formatting and timestamp representation follow their respective source artifacts.",
+    "The clean/prediction artifacts were reconciled with BigQuery during the successful publication-only recovery; these files are GCS exports, not a new BigQuery query result.",
+    "evaluation.json preserves the complete metrics for all 100 evaluation rows; JSON is pretty-printed without changing values.",
+    "validation_summary.json combines verified Spark completion counts with local export consistency checks; it is not an unmodified pipeline artifact.",
+    "Source hashes refer to complete cloud objects; export hashes refer to these smaller/reformatted public files.",
+    "Sample selection intentionally overrepresents anomalies and false positives. It must not be used to estimate full-dataset performance."
+  ],
+  "sources": {
+    "input": {
+      "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/inputs/evaluation.ndjson",
+      "generation": 1793537838346172,
+      "sha256": "19319102dedb1e5104ccfddf5a722d6c1d7d1f453530bfd1a52521f49e22241d",
+      "bytes": 20800
+    },
+    "clean": {
+      "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/data/runs/workflow-smoke-002-evaluation/clean.ndjson",
+      "generation": 1793589088845560,
+      "sha256": "ca1af1cf7efaf5cbc069879cd21c3d8a0e15ca2bf0f88f9bdcba7e916a2dba27",
+      "bytes": 59923
+    },
+    "quality": {
+      "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/data/runs/workflow-smoke-002-evaluation/quality.ndjson",
+      "generation": 1793589091256740,
+      "sha256": "acc84e7f43d3564e6c2eeadee8376a8b137eed8b914eb02f12bf666a14cac8c9",
+      "bytes": 2584
+    },
+    "completion": {
+      "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/data/runs/workflow-smoke-002-evaluation/completion.json",
+      "generation": 1793589092665085,
+      "sha256": "9b657920e91d522419d9063f20c3220f8972ca6e716fd880c02a9361fd4c3442",
+      "bytes": 1737
+    },
+    "metrics": {
+      "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/vertex-workflows/runs/workflow-smoke-002/evaluation.json",
+      "generation": 1793589269467279,
+      "sha256": "0ec3d40bf4ae042350f12633b2544d5319d24c7c5f69fdb0497f77821ecdbdd4",
+      "bytes": 1462
+    },
+    "predictions": {
+      "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/vertex-workflows/runs/workflow-smoke-002/predictions.ndjson",
+      "generation": 1793589270469399,
+      "sha256": "1535bc9a908fe10b72e5c8c2e9edd99f94aef349f6d79be2267a32f86b6af6ad",
+      "bytes": 55794
+    }
+  },
+  "sample_transaction_ids": [
+    "evaluation_123_0000000",
+    "evaluation_123_0000001",
+    "evaluation_123_0000005",
+    "evaluation_123_0000006",
+    "evaluation_123_0000010",
+    "evaluation_123_0000016",
+    "evaluation_123_0000028",
+    "evaluation_123_0000073",
+    "evaluation_123_0000079",
+    "evaluation_123_0000080"
+  ],
+  "exports": {
+    "input_transactions.csv": {
+      "columns": [
+        "transaction_id",
+        "customer_id",
+        "timestamp",
+        "transaction_amount",
+        "merchant_category",
+        "currency",
+        "country"
+      ],
+      "rows": 10,
+      "bytes": 983,
+      "sha256": "d0d3319d9739addd45a3df619545655d840cf724cdbdde360608329a3a3d7380",
+      "source": "input"
+    },
+    "cleaned_transactions.csv": {
+      "columns": [
+        "transaction_id",
+        "customer_id",
+        "timestamp",
+        "transaction_amount",
+        "currency",
+        "country",
+        "merchant_category",
+        "transaction_amount_usd",
+        "transaction_date"
+      ],
+      "rows": 10,
+      "bytes": 1235,
+      "sha256": "75a0e4b1671eeb9c0b39c0e6e07dbe88e54d0b3faab8d2ab9cf694c991d5ea39",
+      "source": "clean"
+    },
+    "anomaly_predictions.csv": {
+      "columns": [
+        "transaction_id",
+        "anomaly_score",
+        "rule_based_prediction",
+        "isolation_forest_prediction",
+        "combined_or_prediction",
+        "actual_anomaly"
+      ],
+      "rows": 10,
+      "bytes": 638,
+      "sha256": "42ca338f049fecab79eaa3132b8761079a19f2a93a4dd7be8dd7ae22da96aa02",
+      "source": "predictions"
+    },
+    "data_quality_results.csv": {
+      "columns": [
+        "check_name",
+        "evaluated_rows",
+        "failed_rows",
+        "passed"
+      ],
+      "rows": 12,
+      "bytes": 397,
+      "sha256": "1d87665e952cdca3e39e61f561b62759901d94a063117bd25897debcb8fb9195",
+      "source": "quality"
+    },
+    "evaluation.json": {
+      "format": "JSON",
+      "bytes": 1462,
+      "sha256": "0ec3d40bf4ae042350f12633b2544d5319d24c7c5f69fdb0497f77821ecdbdd4",
+      "source": "metrics"
+    },
+    "validation_summary.json": {
+      "format": "JSON",
+      "bytes": 978,
+      "sha256": "7fb288a1f44c7c148a6de8ae40b49cd9b3d6321e5f4d3d7c5c012e02b26fbafd",
+      "source": "completion"
+    }
+  },
+  "model_sha256": "a2c6e36c45a520051c4ea154aa560e862dcd5630b94979f12655998184a4a482"
+}

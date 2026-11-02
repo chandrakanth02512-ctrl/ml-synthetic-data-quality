@@ -1,0 +1,23 @@
+{
+  "evidence_type": "VERIFIED CLOUD ARTIFACT EXPORT",
+  "source_run_id": "workflow-smoke-002",
+  "evaluation_split": {
+    "input_rows": 100,
+    "clean_rows": 100,
+    "quarantined_rows": 0,
+    "quality_checks": 12,
+    "all_quality_checks_passed": true
+  },
+  "public_sample": {
+    "rows": 10,
+    "actual_anomalies": 5,
+    "selection": "All evaluation rows with actual_anomaly=1 or isolation_forest_prediction=1, plus the first two remaining transaction IDs; sorted by transaction_id. This is a selected demonstration, not a representative prevalence sample."
+  },
+  "local_export_checks": {
+    "aligned_input_clean_prediction_ids": true,
+    "currency_conversion_matches_existing_simulation_rates": true,
+    "source_row_identity_and_hash_alignment": true,
+    "full_100_row_metrics_recomputed_from_saved_predictions": true
+  },
+  "cloud_workflows_status": "Previous executions FAILED; publication completed through independently verified publication-only recovery."
+}
