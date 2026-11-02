@@ -321,9 +321,31 @@ find_job:
 validate_job:
   params: [job, stage]
   steps:
+    - comparison_copy:
+        assign:
+          - comparison_job: ${job}
+    - dataproc_properties:
+        switch:
+          - condition: ${stage.kind == "dataproc" and get_type(map.get(job, "runtimeConfig")) == "map"}
+            steps:
+              - properties_present:
+                  switch:
+                    - condition: ${get_type(map.get(job.runtimeConfig, "properties")) == "map"}
+                      steps:
+                        - normalize_properties:
+                            call: normalize_dataproc_properties
+                            args: {properties: '${job.runtimeConfig.properties}'}
+                            result: normalized_properties
+                        - comparison_properties:
+                            assign:
+                              - properties_patch:
+                                  properties: ${normalized_properties}
+                              - runtime_patch:
+                                  runtimeConfig: ${map.merge(job.runtimeConfig, properties_patch)}
+                              - comparison_job: ${map.merge(job, runtime_patch)}
     - spec_matches:
         call: includes
-        args: {actual: '${job}', expected: '${stage.spec}'}
+        args: {actual: '${comparison_job}', expected: '${stage.spec}'}
         result: valid
     - dataproc_payload:
         switch:
@@ -347,7 +369,7 @@ validate_job:
             steps:
               - restricted_vertex:
                   switch:
-                    - condition: ${not text.match_regex(job.name, "^projects/gcp-intelligent-data-quality/locations/asia-south1/customJobs/[0-9]+$")}
+                    - condition: ${get_type(map.get(job, "name")) != "string" or not text.match_regex(job.name, "^projects/(gcp-intelligent-data-quality|984592102391)/locations/asia-south1/customJobs/[0-9]+$")}
                       raise: {category: WORKLOAD_IDENTITY_CONFLICT}
                     - condition: ${default(map.get(job.jobSpec.workerPoolSpecs[0].machineSpec, "acceleratorCount"), 0) != 0 or default(map.get(job.jobSpec.workerPoolSpecs[0].machineSpec, "acceleratorType"), "ACCELERATOR_TYPE_UNSPECIFIED") != "ACCELERATOR_TYPE_UNSPECIFIED"}
                       raise: {category: UNEXPECTED_ACCELERATOR}
@@ -355,6 +377,46 @@ validate_job:
                       raise: {category: UNEXPECTED_VERTEX_ACCESS}
     - checked:
         return: true
+
+normalize_dataproc_properties:
+  params: [properties]
+  steps:
+    - initialize_properties:
+        assign:
+          - normalized: {}
+    - property_entries:
+        for:
+          value: property_key
+          in: ${keys(properties)}
+          steps:
+            - canonical_key:
+                assign:
+                  - canonical: ${property_key}
+            - recognized_prefix:
+                switch:
+                  - condition: ${text.match_regex(property_key, "^spark:spark[.]")}
+                    assign:
+                      - canonical: ${text.substring(property_key, 6, len(property_key))}
+                  - condition: ${text.match_regex(property_key, "^dataproc:dataproc[.]")}
+                    assign:
+                      - canonical: ${text.substring(property_key, 9, len(property_key))}
+            - existing_alias:
+                switch:
+                  - condition: ${canonical in normalized}
+                    steps:
+                      - alias_type:
+                          switch:
+                            - condition: ${get_type(normalized[canonical]) != get_type(properties[property_key])}
+                              raise: {category: WORKLOAD_REQUEST_CONFLICT}
+                      - alias_value:
+                          switch:
+                            - condition: ${normalized[canonical] != properties[property_key]}
+                              raise: {category: WORKLOAD_REQUEST_CONFLICT}
+            - record_property:
+                assign:
+                  - normalized[canonical]: ${properties[property_key]}
+    - properties_normalized:
+        return: ${normalized}
 
 includes:
   params: [actual, expected]
@@ -374,7 +436,7 @@ includes:
                     steps:
                       - default_false:
                           switch:
-                            - condition: ${not (key in actual) and expected[key] == false}
+                            - condition: ${not (key in actual) and get_type(expected[key]) == "boolean" and expected[key] == false}
                               next: continue
                             - condition: ${not (key in actual)}
                               return: false
@@ -413,6 +475,10 @@ includes:
                               return: false
               - list_matches:
                   return: true
+    - scalar_type:
+        switch:
+          - condition: ${get_type(actual) != get_type(expected)}
+            return: false
     - scalar:
         return: ${actual == expected}
 

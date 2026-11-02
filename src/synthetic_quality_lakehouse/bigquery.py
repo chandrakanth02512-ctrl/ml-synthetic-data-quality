@@ -17,6 +17,9 @@ from synthetic_quality_lakehouse.manifest import validate_manifest
 from synthetic_quality_lakehouse.schemas import TABLES, ddl, schema_json
 
 LABELS = {"application": "synthetic-quality-lakehouse"}
+# Applies to the entire transactional script, including per-statement billing minima.
+# Keep a finite cap with room for validation, inserts and final reconciliation.
+PUBLICATION_MAX_BYTES_BILLED = 512 * 1024 * 1024
 
 
 def schema(kind):
@@ -178,7 +181,7 @@ def load(manifest, store, client, project, dataset, location="asia-south1"):
     query = render_sql(ds, stages)
     job_config = bq.QueryJobConfig(
         use_legacy_sql=False,
-        maximum_bytes_billed=100_000_000,
+        maximum_bytes_billed=PUBLICATION_MAX_BYTES_BILLED,
         labels=LABELS,
         query_parameters=[bq.ScalarQueryParameter(k, *v) for k, v in params.items()],
     )

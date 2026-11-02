@@ -49,9 +49,13 @@ class Engine:
         self.functions = {
             "map.get": lambda m, k: m.get(k),
             "map.delete": lambda m, k: {n: v for n, v in m.items() if n != k},
+            "map.merge": lambda a, b: {**a, **b},
             "list.concat": lambda xs, x: [*xs, x],
             "text.substring": lambda s, low, high: s[low:high],
-            "text.match_regex": lambda s, r: re.search(r, s) is not None,
+            # RE2's final $ requires end-of-text, unlike Python's before-newline $.
+            "text.match_regex": lambda s, r: (
+                re.search(r[:-1] + r"\Z" if r.endswith("$") else r, s) is not None
+            ),
             "text.url_encode": lambda s: quote(s, safe=""),
             "text.encode": lambda s: s.encode(),
             "base64.encode": lambda b: base64.b64encode(b).decode(),
@@ -117,6 +121,18 @@ class Engine:
             assert len(node.ops) == 1
             a, b = self.expression(node.left, env), self.expression(node.comparators[0], env)
             op = node.ops[0]
+            if isinstance(op, (ast.Eq, ast.NotEq)):
+                numeric = type(a) in (int, float) and type(b) in (int, float)
+                if a is not None and b is not None and type(a) is not type(b) and not numeric:
+                    raise WorkflowError(
+                        {
+                            "tags": ["TypeError"],
+                            "message": "incompatible operand types for comparison: "
+                            + type(a).__name__
+                            + " and "
+                            + type(b).__name__,
+                        }
+                    )
             if isinstance(op, ast.Eq):
                 return a == b
             if isinstance(op, ast.NotEq):
@@ -188,7 +204,15 @@ class Engine:
             for assignment in node["assign"]:
                 assert len(assignment) == 1
                 key, value = next(iter(assignment.items()))
-                env[key] = self.value(value, env)
+                target = ast.parse(key, mode="eval").body
+                evaluated = self.value(value, env)
+                if isinstance(target, ast.Name):
+                    env[key] = evaluated
+                else:
+                    assert isinstance(target, ast.Subscript)
+                    self.expression(target.value, env)[self.expression(target.slice, env)] = (
+                        evaluated
+                    )
         elif "call" in node:
             args = self.value(node.get("args", {}), env)
             call = node["call"]

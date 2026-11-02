@@ -6,7 +6,7 @@ import json
 from google.api_core.exceptions import Conflict, NotFound
 from google.cloud import bigquery as bq
 
-from synthetic_quality_lakehouse.bigquery import job_once
+from synthetic_quality_lakehouse.bigquery import PUBLICATION_MAX_BYTES_BILLED, job_once
 from synthetic_quality_lakehouse.config import dataset_name
 from synthetic_quality_vertex.config import fingerprint
 from synthetic_quality_vertex.prediction_sql import PUBLISH
@@ -128,7 +128,7 @@ def load(manifest, store, client, project, dataset, location="asia-south1"):
     query = PUBLISH.format(dataset=ds, stage=stage)
     query_config = bq.QueryJobConfig(
         use_legacy_sql=False,
-        maximum_bytes_billed=100_000_000,
+        maximum_bytes_billed=PUBLICATION_MAX_BYTES_BILLED,
         labels=LABELS,
         query_parameters=[bq.ScalarQueryParameter(k, *v) for k, v in params.items()],
     )

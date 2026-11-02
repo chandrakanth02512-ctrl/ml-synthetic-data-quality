@@ -1,0 +1,193 @@
+{
+  "reservation_reference": {
+    "uri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/runs/workflow-smoke-001/vertex/attempt.json"
+  },
+  "reservation": {
+    "owner_execution": "f6293340-00e7-4bd4-a7ac-9ef5cf85a89d",
+    "plan_hash": "54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a",
+    "spec": {
+      "displayName": "quality-workflow-smoke-001",
+      "jobSpec": {
+        "baseOutputDirectory": {
+          "outputUriPrefix": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/runs/workflow-smoke-001/vertex-output"
+        },
+        "scheduling": {
+          "disableRetries": true,
+          "restartJobOnWorkerRestart": false,
+          "timeout": "1200s"
+        },
+        "serviceAccount": "synthetic-quality-vertex@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+        "workerPoolSpecs": [
+          {
+            "containerSpec": {
+              "args": [
+                "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0.zip",
+                "1793553960354418",
+                "325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0",
+                "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/plans/54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a.json",
+                "1793555886950821",
+                "54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a",
+                "vertex"
+              ],
+              "command": [
+                "python",
+                "-c",
+                "\"\"\"Standalone Spark/container bootstrap: verify package and plan before importing.\"\"\"\n\nimport hashlib\nimport json\nimport runpy\nimport sys\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\nfrom urllib.parse import urlsplit\n\nfrom google.cloud import storage\n\n\ndef download(client, uri, generation, digest, maximum):\n    parsed = urlsplit(uri)\n    if (\n        parsed.scheme != \"gs\"\n        or parsed.netloc != \"synthetic-quality-984592102391-data-as1\"\n        or parsed.query\n        or parsed.fragment\n        or any(p in {\"\", \".\", \"..\"} for p in parsed.path[1:].split(\"/\"))\n    ):\n        raise ValueError(\"Invalid workflow bootstrap object\")\n    blob = client.bucket(parsed.netloc).get_blob(\n        parsed.path[1:],\n        generation=int(generation),\n        retry=None,\n    )\n    if blob is None or blob.size is None or blob.size > maximum:\n        raise ValueError(\"Missing or oversized workflow bootstrap object\"\\ )\n    data = blob.download_as_bytes(if_generation_match=int(generation), retry=None)\n    if len(data) > maximum or hashlib.sha256(data).hexdigest() != digest:\n        raise ValueError(\"Workflow bootstrap hash differs\")\n    return data\n\n\ndef main():\n    if len(sys.argv) != 8 or sys.argv[-1] not in {\"training\", \"evaluation\", \"vertex\"}:\n        raise ValueError(\"Expected pinned package, plan and fixed phase\")\n    client = storage.Client()\n    package = download(client, *sys.argv[1:4], maximum=4 * 1024 * 1024)\n    plan = download(client, *sys.argv[4:7], maximum=64 * 1024)\n    value = json.loads(plan)\n    if value[\"package\"] != {\n        \"uri\": sys.argv[1],\n        \"generation\": int(sys.argv[2]),\n        \"sha256\": sys.argv[3],\n    }:\n        raise ValueError(\"Package does not match the pinned plan\")\n    with TemporaryDirectory(prefix=\"workflow-bootstrap-\") as directory:\n        path = Path(directory) / \"pipeline.zip\"\n       \\ \\ path.write_bytes(package)\n        sys.path.insert(0, str(path))\n        config = Path(directory) / \"plan.json\"\n        config.write_bytes(plan)\n        sys.argv = [\n            \"synthetic_quality_workflows.runner\",\n            \"--plan\",\n            str(config),\n            \"--phase\",\n            sys.argv[-1],\n        ]\n        runpy.run_module(\"synthetic_quality_workflows.runner\", run_name=\"__main__\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
+              ],
+              "env": [
+                {
+                  "name": "OMP_NUM_THREADS",
+                  "value": "1"
+                },
+                {
+                  "name": "OPENBLAS_NUM_THREADS",
+                  "value": "1"
+                },
+                {
+                  "name": "MKL_NUM_THREADS",
+                  "value": "1"
+                }
+              ],
+              "imageUri": "asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality-workflows@sha256:d70eed58e098682dc8afab8809492abe3a96d5034464fcc703351f85ee6bfbac"
+            },
+            "machineSpec": {
+              "machineType": "n1-standard-4"
+            },
+            "replicaCount": "1"
+          }
+        ]
+      },
+      "labels": {
+        "application": "synthetic-quality-workflows",
+        "request_sha": "54eb5990579ef2bf7624daa7b19f3de0819ff92c"
+      }
+    }
+  },
+  "job": {
+    "name": "projects/984592102391/locations/asia-south1/customJobs/8554311789649592320",
+    "displayName": "quality-workflow-smoke-001",
+    "jobSpec": {
+      "workerPoolSpecs": [
+        {
+          "machineSpec": {
+            "machineType": "n1-standard-4"
+          },
+          "replicaCount": "1",
+          "diskSpec": {
+            "bootDiskType": "pd-ssd",
+            "bootDiskSizeGb": 100
+          },
+          "containerSpec": {
+            "imageUri": "asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality-workflows@sha256:d70eed58e098682dc8afab8809492abe3a96d5034464fcc703351f85ee6bfbac",
+            "command": [
+              "python",
+              "-c",
+              "\"\"\"Standalone Spark/container bootstrap: verify package and plan before importing.\"\"\"\n\nimport hashlib\nimport json\nimport runpy\nimport sys\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\nfrom urllib.parse import urlsplit\n\nfrom google.cloud import storage\n\n\ndef download(client, uri, generation, digest, maximum):\n    parsed = urlsplit(uri)\n    if (\n        parsed.scheme != \"gs\"\n        or parsed.netloc != \"synthetic-quality-984592102391-data-as1\"\n        or parsed.query\n        or parsed.fragment\n        or any(p in {\"\", \".\", \"..\"} for p in parsed.path[1:].split(\"/\"))\n    ):\n        raise ValueError(\"Invalid workflow bootstrap object\")\n    blob = client.bucket(parsed.netloc).get_blob(\n        parsed.path[1:],\n        generation=int(generation),\n        retry=None,\n    )\n    if blob is None or blob.size is None or blob.size > maximum:\n        raise ValueError(\"Missing or oversized workflow bootstrap object\"\\ )\n    data = blob.download_as_bytes(if_generation_match=int(generation), retry=None)\n    if len(data) > maximum or hashlib.sha256(data).hexdigest() != digest:\n        raise ValueError(\"Workflow bootstrap hash differs\")\n    return data\n\n\ndef main():\n    if len(sys.argv) != 8 or sys.argv[-1] not in {\"training\", \"evaluation\", \"vertex\"}:\n        raise ValueError(\"Expected pinned package, plan and fixed phase\")\n    client = storage.Client()\n    package = download(client, *sys.argv[1:4], maximum=4 * 1024 * 1024)\n    plan = download(client, *sys.argv[4:7], maximum=64 * 1024)\n    value = json.loads(plan)\n    if value[\"package\"] != {\n        \"uri\": sys.argv[1],\n        \"generation\": int(sys.argv[2]),\n        \"sha256\": sys.argv[3],\n    }:\n        raise ValueError(\"Package does not match the pinned plan\")\n    with TemporaryDirectory(prefix=\"workflow-bootstrap-\") as directory:\n        path = Path(directory) / \"pipeline.zip\"\n       \\ \\ path.write_bytes(package)\n        sys.path.insert(0, str(path))\n        config = Path(directory) / \"plan.json\"\n        config.write_bytes(plan)\n        sys.argv = [\n            \"synthetic_quality_workflows.runner\",\n            \"--plan\",\n            str(config),\n            \"--phase\",\n            sys.argv[-1],\n        ]\n        runpy.run_module(\"synthetic_quality_workflows.runner\", run_name=\"__main__\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
+            ],
+            "args": [
+              "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0.zip",
+              "1793553960354418",
+              "325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0",
+              "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/plans/54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a.json",
+              "1793555886950821",
+              "54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a",
+              "vertex"
+            ],
+            "env": [
+              {
+                "name": "OMP_NUM_THREADS",
+                "value": "1"
+              },
+              {
+                "name": "OPENBLAS_NUM_THREADS",
+                "value": "1"
+              },
+              {
+                "name": "MKL_NUM_THREADS",
+                "value": "1"
+              }
+            ]
+          }
+        }
+      ],
+      "scheduling": {
+        "timeout": "1200s",
+        "disableRetries": true
+      },
+      "serviceAccount": "synthetic-quality-vertex@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+      "baseOutputDirectory": {
+        "outputUriPrefix": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/runs/workflow-smoke-001/vertex-output"
+      }
+    },
+    "state": "JOB_STATE_FAILED",
+    "labels": {
+      "application": "synthetic-quality-workflows",
+      "request_sha": "54eb5990579ef2bf7624daa7b19f3de0819ff92c"
+    }
+  },
+  "stage": {
+    "id": "vertex",
+    "kind": "vertex",
+    "spec": {
+      "displayName": "quality-workflow-smoke-001",
+      "labels": {
+        "application": "synthetic-quality-workflows",
+        "request_sha": "54eb5990579ef2bf7624daa7b19f3de0819ff92c"
+      },
+      "jobSpec": {
+        "serviceAccount": "synthetic-quality-vertex@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+        "baseOutputDirectory": {
+          "outputUriPrefix": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/runs/workflow-smoke-001/vertex-output"
+        },
+        "scheduling": {
+          "timeout": "1200s",
+          "disableRetries": true,
+          "restartJobOnWorkerRestart": false
+        },
+        "workerPoolSpecs": [
+          {
+            "machineSpec": {
+              "machineType": "n1-standard-4"
+            },
+            "replicaCount": "1",
+            "containerSpec": {
+              "imageUri": "asia-south1-docker.pkg.dev/gcp-intelligent-data-quality/synthetic-quality-phase1/synthetic-quality-workflows@sha256:d70eed58e098682dc8afab8809492abe3a96d5034464fcc703351f85ee6bfbac",
+              "command": [
+                "python",
+                "-c",
+                "\"\"\"Standalone Spark/container bootstrap: verify package and plan before importing.\"\"\"\n\nimport hashlib\nimport json\nimport runpy\nimport sys\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\nfrom urllib.parse import urlsplit\n\nfrom google.cloud import storage\n\n\ndef download(client, uri, generation, digest, maximum):\n    parsed = urlsplit(uri)\n    if (\n        parsed.scheme != \"gs\"\n        or parsed.netloc != \"synthetic-quality-984592102391-data-as1\"\n        or parsed.query\n        or parsed.fragment\n        or any(p in {\"\", \".\", \"..\"} for p in parsed.path[1:].split(\"/\"))\n    ):\n        raise ValueError(\"Invalid workflow bootstrap object\")\n    blob = client.bucket(parsed.netloc).get_blob(\n        parsed.path[1:],\n        generation=int(generation),\n        retry=None,\n    )\n    if blob is None or blob.size is None or blob.size > maximum:\n        raise ValueError(\"Missing or oversized workflow bootstrap object\")\n    data = blob.download_as_bytes(if_generation_match=int(generation), retry=None)\n    if len(data) > maximum or hashlib.sha256(data).hexdigest() != digest:\n        raise ValueError(\"Workflow bootstrap hash differs\")\n    return data\n\n\ndef main():\n    if len(sys.argv) != 8 or sys.argv[-1] not in {\"training\", \"evaluation\", \"vertex\"}:\n        raise ValueError(\"Expected pinned package, plan and fixed phase\")\n    client = storage.Client()\n    package = download(client, *sys.argv[1:4], maximum=4 * 1024 * 1024)\n    plan = download(client, *sys.argv[4:7], maximum=64 * 1024)\n    value = json.loads(plan)\n    if value[\"package\"] != {\n        \"uri\": sys.argv[1],\n        \"generation\": int(sys.argv[2]),\n        \"sha256\": sys.argv[3],\n    }:\n        raise ValueError(\"Package does not match the pinned plan\")\n    with TemporaryDirectory(prefix=\"workflow-bootstrap-\") as directory:\n        path = Path(directory) / \"pipeline.zip\"\n        path.write_bytes(package)\n        sys.path.insert(0, str(path))\n        config = Path(directory) / \"plan.json\"\n        config.write_bytes(plan)\n        sys.argv = [\n            \"synthetic_quality_workflows.runner\",\n            \"--plan\",\n            str(config),\n            \"--phase\",\n            sys.argv[-1],\n        ]\n        runpy.run_module(\"synthetic_quality_workflows.runner\", run_name=\"__main__\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
+              ],
+              "args": [
+                "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0.zip",
+                "1793553960354418",
+                "325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0",
+                "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/plans/54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a.json",
+                "1793555886950821",
+                "54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a",
+                "vertex"
+              ],
+              "env": [
+                {
+                  "name": "OMP_NUM_THREADS",
+                  "value": "1"
+                },
+                {
+                  "name": "OPENBLAS_NUM_THREADS",
+                  "value": "1"
+                },
+                {
+                  "name": "MKL_NUM_THREADS",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "collection": "https://asia-south1-aiplatform.googleapis.com/v1/projects/gcp-intelligent-data-quality/locations/asia-south1/customJobs",
+    "query": {},
+    "name": "",
+    "result_url": "https://storage.googleapis.com/storage/v1/b/synthetic-quality-984592102391-data-as1/o/lakehouse%2Forchestration%2Fruns%2Fworkflow-smoke-001%2Fcompletion.json"
+  }
+}

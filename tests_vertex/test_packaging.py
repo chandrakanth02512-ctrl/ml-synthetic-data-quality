@@ -149,8 +149,9 @@ def test_pr4_code_preserved_with_pinned_portfolio_readme_revision():
     baseline = json.loads((ROOT / "vertex/base-baseline.json").read_text())
     old_readme_sha = "002828ed3a3ea82dffdfae27e344d89c9beb485a"
     reviewed_blobs = {
-        "README.md": "b8f8cc6410a0f89470c630eb5a5bea34747f3908",
-        "tests_lakehouse/test_packaging.py": "bb5612ee322ebd78ca521459bda3fb28cc1beb6d",
+        "src/synthetic_quality_lakehouse/bigquery.py": "4d1d4739ed2964f68e2133a3814d32428b4fee79",
+        "README.md": "9f4d0d27692df51b1416d8d36f1f41df02b7a3d0",
+        "tests_lakehouse/test_packaging.py": "918de6ae0cc308677d4423b3f01a96cbe01755b8",
     }
     assert (
         next(x for x in baseline["files"] if x["path"] == "README.md")["git_blob_sha"]

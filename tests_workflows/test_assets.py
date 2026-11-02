@@ -138,16 +138,18 @@ def test_staging_gate_no_cloud_and_preserved_base_code(monkeypatch):
     baseline = json.loads(Path("workflows/base-baseline.json").read_text())
     assert len(baseline) == 102
 
-    # Keep the historical baseline immutable. The three reviewed files
+    # Keep the historical baseline immutable. Explicitly reviewed files
     # below have exact Git blob pins; all other original files must retain
     # the baseline SHA-256 digests.
     assert baseline["README.md"] == (
         "ddca6deea98651c931c381b39b8e81bdc8d53ab42a65c47215c8bd15d99bcdf4"
     )
     reviewed_blobs = {
-        "README.md": "b8f8cc6410a0f89470c630eb5a5bea34747f3908",
-        "tests_lakehouse/test_packaging.py": "bb5612ee322ebd78ca521459bda3fb28cc1beb6d",
-        "tests_vertex/test_packaging.py": "93413fe29dc80d4343ab91a4ce5a577520fe73a7",
+        "src/synthetic_quality_lakehouse/bigquery.py": "4d1d4739ed2964f68e2133a3814d32428b4fee79",
+        "src/synthetic_quality_vertex/predictions.py": "320817d53f84cf869d070527f12842429b1a318e",
+        "README.md": "9f4d0d27692df51b1416d8d36f1f41df02b7a3d0",
+        "tests_lakehouse/test_packaging.py": "918de6ae0cc308677d4423b3f01a96cbe01755b8",
+        "tests_vertex/test_packaging.py": "d68706b619ca83faa6c1f115236c567e3ce2b8b1",
     }
     for path, digest in baseline.items():
         data = Path(path).read_bytes()
@@ -172,6 +174,26 @@ def walk_steps(steps):
         for branch in node.get("switch", []):
             if "steps" in branch:
                 yield from walk_steps(branch["steps"])
+
+
+def checked_expression(value):
+    tree = ast.parse(value[2:-1].replace("if(", "choose("), mode="eval")
+    assert not any(isinstance(n, ast.Dict) for n in ast.walk(tree)), (
+        "Workflows expressions do not support inline map literals; use YAML assign maps"
+    )
+    assert not any(isinstance(n, ast.Slice) for n in ast.walk(tree))
+    return tree
+
+
+def test_compiler_rejected_inline_map_expression_fails_offline_validation():
+    rejected = (
+        '${map.merge(job, {"runtimeConfig": '
+        'map.merge(job.runtimeConfig, {"properties": normalized_properties})})}'
+    )
+    with pytest.raises(AssertionError, match="inline map literals"):
+        checked_expression(rejected)
+    checked_expression("${map.merge(job, runtime_patch)}")
+    checked_expression('${"literal { braces } in a string"}')
 
 
 def test_workflows_documented_subset_names_expressions_and_effect_boundaries(definition):
@@ -201,8 +223,7 @@ def test_workflows_documented_subset_names_expressions_and_effect_boundaries(def
 
     for value in expressions(definition):
         assert len(value) <= 400, value
-        tree = ast.parse(value[2:-1].replace("if(", "choose("), mode="eval")
-        assert not any(isinstance(n, ast.Slice) for n in ast.walk(tree))
+        checked_expression(value)
     assert len(files("synthetic_quality_workflows").joinpath("bootstrap.py").read_bytes()) < 65536
 
 

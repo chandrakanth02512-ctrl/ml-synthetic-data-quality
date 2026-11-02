@@ -17,6 +17,19 @@ from synthetic_quality_workflows.plan import ROOT, ObjectRef, compile_plan, vali
 REPO = Path(__file__).resolve().parents[1]
 
 
+class WorkflowDumper(yaml.SafeDumper):
+    """Keep embedded Python literal: no double-quoted YAML continuation escapes."""
+
+
+def workflow_string(dumper, value):
+    return dumper.represent_scalar(
+        "tag:yaml.org,2002:str", value, style="|" if "\n" in value else None
+    )
+
+
+WorkflowDumper.add_representer(str, workflow_string)
+
+
 def package(destination):
     with ZipFile(destination, "x") as archive:
         for name in (
@@ -39,7 +52,7 @@ def render(bundle, destination):
     compiled = compile_plan(bundle["plan"], bundle["reference"])
     definition = yaml.safe_load((REPO / "workflows/pipeline.yaml").read_text())
     definition["main"]["steps"][0]["initialize"]["assign"][0]["p"] = compiled
-    text = yaml.safe_dump(definition, sort_keys=False, width=1000)
+    text = yaml.dump(definition, Dumper=WorkflowDumper, sort_keys=False, width=1000)
     if len(text.encode()) > 128 * 1024:
         raise ValueError("Workflow source exceeds 128 KiB bound")
     with Path(destination).open("x") as stream:

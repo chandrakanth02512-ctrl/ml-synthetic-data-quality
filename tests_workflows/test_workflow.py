@@ -35,6 +35,40 @@ def test_actual_yaml_success_and_replay_without_new_workloads(definition, effect
     assert result["status"] == "COMPLETE" and len(effects.submissions) == 3
 
 
+def test_resume_original_comparison_failure_adopts_prefixed_training_job(definition, effects):
+    class PrefixedResponse:
+        def __call__(self, method, args):
+            response = copy.deepcopy(effects(method, args))
+            job = response.get("body", {})
+            if isinstance(job, dict) and "pysparkBatch" in job:
+                properties = job["runtimeConfig"]["properties"]
+                job["runtimeConfig"]["properties"] = {
+                    ("spark:" if key.startswith("spark.") else "dataproc:") + key: value
+                    for key, value in properties.items()
+                }
+            return response
+
+    # Recreate the pre-fix control plane, with the same request and object identities.
+    broken = copy.deepcopy(definition)
+    broken["validate_job"]["steps"] = broken["validate_job"]["steps"][2:]
+    broken["validate_job"]["steps"][0]["spec_matches"]["args"]["actual"] = "${job}"
+    missing = broken["includes"]["steps"][0]["maps"]["switch"][0]["steps"][1]
+    missing["entries"]["for"]["steps"][0]["default_false"]["switch"][0]["condition"] = (
+        "${not (key in actual) and expected[key] == false}"
+    )
+    arguments = {"confirm": "RUN " + effects.p["run_id"], "mode": "start"}
+    with pytest.raises(WorkflowError, match="CONTROL_PLANE_ERROR"):
+        Engine(broken, PrefixedResponse()).run("main", args=arguments)
+    assert effects.submissions == ["training"]
+    bucket = effects.store.client.bucket(effects.p["bucket"])
+    evidence = copy.deepcopy(bucket.objects)
+    arguments["mode"] = "resume"
+    result = Engine(definition, PrefixedResponse(), "execution-002").run("main", args=arguments)
+    assert result["status"] == "COMPLETE"
+    assert effects.submissions == ["training", "evaluation", "vertex"]
+    assert all(bucket.objects[path] == original for path, original in evidence.items())
+
+
 def test_template_disabled_and_manual_confirmation_before_any_effect(definition, effects):
     def forbidden(*args):
         raise AssertionError("No HTTP effect allowed")

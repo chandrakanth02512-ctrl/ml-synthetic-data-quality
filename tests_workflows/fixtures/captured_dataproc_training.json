@@ -1,0 +1,113 @@
+{
+  "stage": {
+    "id": "training",
+    "kind": "dataproc",
+    "spec": {
+      "pysparkBatch": {
+        "mainPythonFileUri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/50624d22449571ac64112479b9ae27f5af3073ac846dc1b62e3fc48ba275c973.py",
+        "args": [
+          "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0.zip",
+          "1793553960354418",
+          "325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0",
+          "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/plans/54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a.json",
+          "1793555886950821",
+          "54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a",
+          "training"
+        ]
+      },
+      "runtimeConfig": {
+        "version": "3.0",
+        "properties": {
+          "dataproc.tier": "standard",
+          "spark.driver.cores": "4",
+          "spark.driver.memory": "8g",
+          "spark.executor.cores": "4",
+          "spark.executor.memory": "8g",
+          "spark.executor.instances": "2",
+          "spark.dynamicAllocation.enabled": "false",
+          "spark.sql.shuffle.partitions": "2",
+          "spark.sql.session.timeZone": "UTC"
+        }
+      },
+      "environmentConfig": {
+        "executionConfig": {
+          "serviceAccount": "synthetic-quality-spark@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+          "subnetworkUri": "projects/gcp-intelligent-data-quality/regions/asia-south1/subnetworks/default",
+          "ttl": "600s",
+          "authenticationConfig": {
+            "userWorkloadAuthenticationType": "SERVICE_ACCOUNT"
+          }
+        }
+      },
+      "labels": {
+        "application": "synthetic-quality-workflows",
+        "request_sha": "54eb5990579ef2bf7624daa7b19f3de0819ff92c"
+      }
+    },
+    "collection": "https://dataproc.googleapis.com/v1/projects/gcp-intelligent-data-quality/locations/asia-south1/batches",
+    "name": "projects/gcp-intelligent-data-quality/locations/asia-south1/batches/idq-54eb5990579ef2bf7624daa7b19f3de0-training",
+    "query": {
+      "batchId": "idq-54eb5990579ef2bf7624daa7b19f3de0-training",
+      "requestId": "dc3bca86-fa29-5a4b-a949-2d3f917a67a4"
+    },
+    "result_url": "https://storage.googleapis.com/storage/v1/b/synthetic-quality-984592102391-data-as1/o/lakehouse%2Forchestration%2Fdata%2Fruns%2Fworkflow-smoke-001-training%2Fcompletion.json"
+  },
+  "response": {
+    "name": "projects/gcp-intelligent-data-quality/locations/asia-south1/batches/idq-54eb5990579ef2bf7624daa7b19f3de0-training",
+    "pysparkBatch": {
+      "mainPythonFileUri": "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/50624d22449571ac64112479b9ae27f5af3073ac846dc1b62e3fc48ba275c973.py",
+      "args": [
+        "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/code/325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0.zip",
+        "1793553960354418",
+        "325efb93ec0b1e66eb6973622f36f3cf2a8563db0fdfa203bb8ff9e4105b07d0",
+        "gs://synthetic-quality-984592102391-data-as1/lakehouse/orchestration/plans/54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a.json",
+        "1793555886950821",
+        "54eb5990579ef2bf7624daa7b19f3de0819ff92cec5a341036fc8de044355a1a",
+        "training"
+      ]
+    },
+    "state": "SUCCEEDED",
+    "labels": {
+      "application": "synthetic-quality-workflows",
+      "request_sha": "54eb5990579ef2bf7624daa7b19f3de0819ff92c",
+      "goog-dataproc-batch-id": "idq-54eb5990579ef2bf7624daa7b19f3de0-training",
+      "goog-dataproc-batch-uuid": "ed845135-dd19-4a67-be50-fcac6351b203",
+      "goog-dataproc-location": "asia-south1",
+      "goog-dataproc-drz-resource-uuid": "batch-ed845135-dd19-4a67-be50-fcac6351b203"
+    },
+    "runtimeConfig": {
+      "version": "3.0",
+      "properties": {
+        "dataproc:dataproc.tier": "standard",
+        "spark:spark.driver.cores": "4",
+        "spark:spark.driver.memory": "8g",
+        "spark:spark.dynamicAllocation.enabled": "false",
+        "spark:spark.executor.cores": "4",
+        "spark:spark.executor.instances": "2",
+        "spark:spark.executor.memory": "8g",
+        "spark:spark.sql.session.timeZone": "UTC",
+        "spark:spark.sql.shuffle.partitions": "2",
+        "spark:spark.dataproc.engine": "default",
+        "spark:spark.dataproc.lightningEngine.runtime": "default",
+        "spark:spark.dynamicAllocation.executorAllocationRatio": "0.3",
+        "spark:spark.driver.memoryOverhead": "3277m",
+        "spark:spark.executor.memoryOverhead": "3277m",
+        "spark:spark.app.name": "projects/gcp-intelligent-data-quality/locations/asia-south1/batches/idq-54eb5990579ef2bf7624daa7b19f3de0-training",
+        "spark:spark.dataproc.autotuning.cohortId": "ed845135-dd19-4a67-be50-fcac6351b203"
+      }
+    },
+    "environmentConfig": {
+      "executionConfig": {
+        "serviceAccount": "synthetic-quality-spark@gcp-intelligent-data-quality.iam.gserviceaccount.com",
+        "subnetworkUri": "projects/gcp-intelligent-data-quality/regions/asia-south1/subnetworks/default",
+        "ttl": "600s",
+        "authenticationConfig": {
+          "userWorkloadAuthenticationType": "SERVICE_ACCOUNT"
+        }
+      },
+      "peripheralsConfig": {
+        "sparkHistoryServerConfig": {}
+      }
+    }
+  }
+}
